@@ -1,10 +1,6 @@
-
-export default function Home() {
-  return (
-    <div>
-      <h1 className="text-9xl text-blue-500"> 
-        Hello world 
-      </h1>
-    </div>
-  );
+import {getTranslations} from 'next-intl/server';
+ 
+export default async function HomePage() {
+  const t = await getTranslations('HomePage');
+  return <h1>{t('title')}</h1>;
 }
