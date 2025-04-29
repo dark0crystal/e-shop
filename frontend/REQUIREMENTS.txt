@@ -1,0 +1,152 @@
+ ------users
+
+TABLE users (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  email TEXT UNIQUE,
+  password_hash TEXT,
+  phone TEXT,
+  is_admin BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+) 
+ -----
+
+  -----categories
+
+ TABLE categories (
+  id UUID PRIMARY KEY,
+  name TEXT UNIQUE,
+  description TEXT,
+  parent_category_id UUID REFERENCES categories(id),
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+ -----
+
+-----products
+
+TABLE products (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  description TEXT,
+  price DECIMAL(10, 2),
+  stock_quantity INTEGER,
+  category_id UUID REFERENCES categories(id),
+  brand TEXT,
+  sku TEXT UNIQUE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+
+-----
+
+
+-----product_images
+TABLE product_images (
+  id UUID PRIMARY KEY,
+  product_id UUID REFERENCES products(id),
+  image_url TEXT,
+  is_primary BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP
+)
+
+
+-----
+
+-----wishlists
+
+TABLE wishlists (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  product_id UUID REFERENCES products(id),
+  created_at TIMESTAMP
+)
+-------
+
+
+------cart_items
+
+TABLE cart_items (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  product_id UUID REFERENCES products(id),
+  quantity INTEGER,
+  created_at TIMESTAMP
+)
+
+
+------orders
+
+
+TABLE orders (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  total_price DECIMAL(10, 2),
+  status TEXT, -- e.g. "pending", "paid", "shipped", "delivered", "cancelled"
+  shipping_address TEXT,
+  payment_status TEXT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+-------
+
+-------order_items
+
+TABLE order_items (
+  id UUID PRIMARY KEY,
+  order_id UUID REFERENCES orders(id),
+  product_id UUID REFERENCES products(id),
+  quantity INTEGER,
+  price DECIMAL(10, 2)
+)
+--------
+
+-----payments
+
+TABLE payments (
+  id UUID PRIMARY KEY,
+  order_id UUID REFERENCES orders(id),
+  user_id UUID REFERENCES users(id),
+  amount DECIMAL(10, 2),
+  payment_method TEXT,
+  payment_status TEXT,
+  paid_at TIMESTAMP
+)
+----------
+
+
+-------product_reviews
+
+TABLE product_reviews (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  product_id UUID REFERENCES products(id),
+  rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT,
+  created_at TIMESTAMP
+)
+---------
+
+------shipping_providers
+
+TABLE shipping_providers (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  delivery_time TEXT,
+  cost DECIMAL(10, 2),
+  created_at TIMESTAMP
+)
+---------
+
+--------order_shipping
+TABLE order_shipping (
+  id UUID PRIMARY KEY,
+  order_id UUID REFERENCES orders(id),
+  shipping_provider_id UUID REFERENCES shipping_providers(id),
+  tracking_number TEXT,
+  shipped_at TIMESTAMP,
+  delivered_at TIMESTAMP
+)
+---------
