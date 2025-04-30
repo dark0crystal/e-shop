@@ -5,13 +5,12 @@ interface ProductCardProps {
   name: string;
   description: string;
   price: number;
-  image: string; // Assume 1 main image per product for now
+  image: string;
   brand: string;
   stock_quantity: number;
 }
 
 export default function ProductCard({
- 
   name,
   description,
   price,
@@ -20,7 +19,7 @@ export default function ProductCard({
   stock_quantity,
 }: ProductCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-md p-4 w-64 hover:shadow-lg transition">
+    <div className="bg-white shadow-md p-4 w-full sm:max-w-xs mx-auto hover:shadow-lg transition">
       <div className="relative w-full h-40 mb-4">
         <Image
           src={image}
