@@ -8,7 +8,7 @@ export default function SmallAdContainer() {
         <SmallAd
           imageUrl="/case1.jpeg"
           link="/collections/sale-1"
-          title="Sale on Skincare"
+          title="Sales"
         />
         <SmallAd
           imageUrl="/case2.jpeg"
