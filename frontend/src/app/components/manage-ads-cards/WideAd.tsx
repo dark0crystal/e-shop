@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function WideAd({ imageUrl, link }: { imageUrl: string; link?: string }) {
   const adImage = (
-    <div className="relative w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden rounded-xl shadow-md">
+    <div className="relative w-full h-[200px] sm:h-[300px] md:h-[400px] lg:h-[500px] overflow-hidden  shadow-md">
       <Image
         src={imageUrl}
         alt="Wide Ad Banner"
