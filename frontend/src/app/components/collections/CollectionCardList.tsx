@@ -1,4 +1,3 @@
-
 'use client'
 import CollectionCard from "./CollectionCard";
 import caseImage from "../../../../public/case1.jpeg";
@@ -27,15 +26,17 @@ export default function CollectionCardList() {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4">
-      {collections.map((collection) => (
-        <CollectionCard
-          key={collection.id}
-          name={collection.name}
-          image={collection.image}
-          onShopNow={() => handleShopNow(collection.name)}
-        />
-      ))}
+    <div className="flex justify-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 p-4">
+        {collections.map((collection) => (
+          <CollectionCard
+            key={collection.id}
+            name={collection.name}
+            image={collection.image}
+            onShopNow={() => handleShopNow(collection.name)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

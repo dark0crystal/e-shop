@@ -9,12 +9,12 @@ type CollectionCardProps = {
 
 export default function CollectionCard({ image, name, onShopNow }: CollectionCardProps) {
   return (
-    <div className="max-w-sm overflow-hidden shadow-md bg-white">
+    <div className="w-full md:min-w-[350px] shadow-2xl h-96 overflow-hidden  ">
       <Image
         src={image}
         alt={name}
         width={400}
-        height={192}
+        height={250}
         className="object-cover w-full h-48"
       />
       <div className="p-4 flex flex-col items-center">
