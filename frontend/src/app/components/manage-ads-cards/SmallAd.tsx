@@ -10,7 +10,7 @@ interface SmallAdProps {
 
 export default function SmallAd({ imageUrl, link, brand, title }: SmallAdProps) {
   const adCard = (
-    <div className="relative w-full aspect-[5.5/5] overflow-hidden shadow-md"> 
+    <div className="relative w-full aspect-[5.5/5] overflow-hidden shadow-md group transition-all duration-300 ease-in-out transform hover:scale-105">
       <Image
         src={imageUrl}
         alt={title || "Ad"}
@@ -19,7 +19,7 @@ export default function SmallAd({ imageUrl, link, brand, title }: SmallAdProps) 
         priority
       />
 
-      <div className="absolute inset-0 bg-black/10 p-4 flex flex-col justify-between">
+      <div className="absolute inset-0 bg-black/10 p-4 flex flex-col justify-between transition-all duration-300 ease-in-out group-hover:bg-black/30">
         <div>
           {brand && (
             <h2 className="text-white font-semibold text-lg tracking-wide">{brand}</h2>
@@ -43,7 +43,9 @@ export default function SmallAd({ imageUrl, link, brand, title }: SmallAdProps) 
 
   return (
     <div className="w-full px-2 my-4">
-      {adCard}
+      <Link href={link || "#"} passHref>
+        {adCard}
+      </Link>
     </div>
   );
 }
