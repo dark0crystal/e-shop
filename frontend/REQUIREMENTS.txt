@@ -1,3 +1,7 @@
+1-Number of sold items 
+2-
+ 
+ 
  ------users
 
 TABLE users (
