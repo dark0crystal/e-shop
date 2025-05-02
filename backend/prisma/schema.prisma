@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  // output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -156,4 +156,12 @@ model OrderShipping {
   trackingNumber       String           @map("tracking_number")
   shippedAt            DateTime?        @map("shipped_at")
   deliveredAt          DateTime?        @map("delivered_at")
+}
+
+model OtpRequest {
+  id        String   @id @default(uuid())
+  email     String
+  otpHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
