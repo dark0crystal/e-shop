@@ -1,14 +1,23 @@
-import express from 'express'
-const  app =express()
+import express from 'express';
+import cors from 'cors';
 
-// HTTP Methods
+import authRoutes from './routes/authRoutes.js';
 
-//GET
-app.get('/hello',(request , response)=>{
-    response.send("Hello World")
-})
+const app = express();
 
+// Enable CORS middleware
+app.use(cors({
+  origin: 'http://localhost:3000', 
+  credentials: true
+}));
 
-app.listen(8383 ,()=>{
-    console.log("server started on port :3006")
-} )
+// Middleware
+app.use(express.json()); // To parse JSON request bodies
+
+// Routes
+app.use('/api/auth', authRoutes); 
+
+// Start server
+app.listen(8383, () => {
+  console.log('Server started on port: 8383');
+});
