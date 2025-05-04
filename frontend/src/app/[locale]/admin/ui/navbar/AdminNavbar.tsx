@@ -3,7 +3,7 @@ import NavLinks from "./NavLinks";
 
 export default function AdminNavbar(){
     return(
-        <div className="h-[100vh] bg-amber-200 w-[24%]">
+        <div className="h-[100vh] bg-amber-200 w-[24%] ">
             <div>
                 <div>
                     <Brand/>
