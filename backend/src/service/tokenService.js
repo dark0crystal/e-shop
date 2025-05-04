@@ -3,8 +3,8 @@ import jwt from 'jsonwebtoken';
 
 const JWT_PRIVATE_KEY = process.env.JWT_SECRET;
 
-export function generateAuthToken(isAdmin) {
-  return jwt.sign({ isAdmin }, JWT_PRIVATE_KEY);
+export function generateAuthToken(userId, isAdmin) {
+  return jwt.sign({ userId, isAdmin }, JWT_PRIVATE_KEY);
 }
 
 export function decodeToken(token) {
