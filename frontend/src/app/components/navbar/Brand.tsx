@@ -17,7 +17,7 @@ export default  function Brand(){
     // const t = await getTranslations("HomePage")
     return(
         <div className="mx-6 text-black text-[42px] ">
-            <Link   className={lalezarFont.className} href='/'><p className="flex flex-col relative z-20 text-slate-800">{t("brand-duplicate")} <span className="absolute -z-10 text-blue-600">{t("brand")}</span></p></Link>
+            <Link   className={lalezarFont.className} href='/'><p className=" text-slate-800">{t("brand")} </p></Link>
         </div>
     )
 }
