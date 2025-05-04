@@ -2,7 +2,8 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
 import prisma from '../prismaClient.js'
-import jwt from "jsonwebtoken";
+import { decodeToken , generateAuthToken } from '../service/tokenService.js';
+
 
 const router = express.Router();
 
@@ -17,13 +18,13 @@ const transporter = nodemailer.createTransport({
 
 
 // Helper function to generate JWT token
-const generateToken = (userId, isAdmin) => {
-  return jwt.sign(
-    { userId, isAdmin },
-    process.env.JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-};
+// const generateToken = (userId, isAdmin) => {
+//   return jwt.sign(
+//     { userId, isAdmin },
+//     process.env.JWT_SECRET,
+//     { expiresIn: '24h' }
+//   );
+// };
 
 router.post("/send-otp", async (req, res) => {
   try {
@@ -91,7 +92,7 @@ router.post("/verify-otp", async (req, res) => {
     }
 
     // Generate JWT token
-    const token = generateToken(user.id, user.isAdmin);
+    const token = generateAuthToken(user.id, user.isAdmin);
 
     // Clean up OTP record
     await prisma.otpRequest.delete({
@@ -115,29 +116,29 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 // Middleware to verify JWT token
-export const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
+// export const verifyToken = (req, res, next) => {
+//   const token = req.headers.authorization?.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: "No token provided." });
-  }
+//   if (!token) {
+//     return res.status(401).json({ message: "No token provided." });
+//   }
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid token." });
-  }
-};
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     req.user = decoded;
+//     next();
+//   } catch (error) {
+//     return res.status(401).json({ message: "Invalid token." });
+//   }
+// };
 
 // Middleware to check admin status
-export const isAdmin = (req, res, next) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ message: "Access denied. Admin privileges required." });
-  }
-  next();
-};
+// export const isAdmin = (req, res, next) => {
+//   if (!req.user.isAdmin) {
+//     return res.status(403).json({ message: "Access denied. Admin privileges required." });
+//   }
+//   next();
+// };
 
 export default router;
   //in this code what does that mean :// Configure your transporter
