@@ -22,8 +22,10 @@ model User {
   wishlists    Wishlist[]
   cartItems    CartItem[]
   orders       Order[]
-  payments     Payment[]
+  userPaymentMethod     UserPaymentMethod[]
   reviews      ProductReview[]
+  shoppingCart ShoppingCart[]
+  userAddress   UserAddress[]
 }
 
 model Category {
@@ -37,37 +39,81 @@ model Category {
   parentCategory    Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
   subcategories     Category[] @relation("CategoryHierarchy")
   products          Product[]
+  variation         Variation[]
+  promotionCategory   PromotionCategory[]
 }
 
 model Product {
   id             String          @id @default(uuid())
   name           String
   description    String
-  price          Decimal         @db.Decimal(10, 2)
-  stockQuantity  Int             @map("stock_quantity")
+  // price          Decimal         @db.Decimal(10, 2)
+  // stockQuantity  Int             @map("stock_quantity")
   brand          String
-  sku            String          @unique
+  // sku            String          @unique
   isActive       Boolean         @default(true) @map("is_active")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
   category       Category        @relation(fields: [categoryId], references: [id])
   categoryId     String
-  images         ProductImage[]
+  coverImage     String
+  // images         ProductImage[]
   wishlists      Wishlist[]
-  cartItems      CartItem[]
+  productItem    ProductItem[]
+  // cartItems      CartItem[]
   orderItems     OrderItem[]
-  reviews        ProductReview[]
+  
 }
+
+ model ProductItem{
+     id                String     @id @default(uuid())
+     price          Decimal         @db.Decimal(10, 2)
+     stockQuantity  Int             @map("stock_quantity")
+     sku            String          @unique
+     productId      String
+     product        Product @relation(fields: [productId],references: [id])
+     images         ProductImage[]   
+     productConfig  ProductConfig[]
+     cartItem       CartItem[]
+ }
 
 model ProductImage {
   id         String   @id @default(uuid())
-  product    Product  @relation(fields: [productId], references: [id])
+  product    ProductItem  @relation(fields: [productId], references: [id])
   productId  String
   imageUrl   String   @map("image_url")
   isPrimary  Boolean  @default(false) @map("is_primary")
   createdAt  DateTime @default(now()) @map("created_at")
 }
+
+model ProductConfig{
+  id         String   @id @default(uuid())
+  productItemId String
+  variationOptionId String
+  variationOption VariationOption @relation(fields: [variationOptionId], references: [id])
+  productItem     ProductItem @relation(fields: [productItemId], references: [id])
+  
+}
+
+model Variation{
+  id         String   @id @default(uuid())
+  categoryId String 
+  name String 
+  category    Category @relation(fields: [categoryId],references: [id])
+  variationOption            VariationOption[]
+  // productConfig              ProductConfig[]
+  
+}
+
+model VariationOption{
+    id         String   @id @default(uuid())
+    value     String
+    variationId String
+    variation   Variation @relation(fields: [variationId], references: [id])
+    productConfig    ProductConfig[]
+}
+
 
 model Wishlist {
   id         String   @id @default(uuid())
@@ -82,10 +128,17 @@ model CartItem {
   id         String   @id @default(uuid())
   user       User     @relation(fields: [userId], references: [id])
   userId     String
-  product    Product  @relation(fields: [productId], references: [id])
-  productId  String
+  productItem    ProductItem  @relation(fields: [productItemId], references: [id])
+  productItemId  String
   quantity   Int
   createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model ShoppingCart{
+   id         String   @id @default(uuid())
+   userId     String
+   user      User @relation(fields: [userId], references: [id])
+
 }
 
 model Order {
@@ -94,14 +147,50 @@ model Order {
   userId         String
   totalPrice     Decimal       @db.Decimal(10, 2) @map("total_price")
   status         String
-  shippingAddr   String        @map("shipping_address")
-  paymentStatus  String        @map("payment_status")
+  // paymentStatus  String        @map("payment_status")
+  userPaymentMethodId  String  
+  userPaymentMethod  UserPaymentMethod @relation(fields: [userPaymentMethodId], references: [id])
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
-
   items          OrderItem[]
-  payments       Payment[]
-  shipping       OrderShipping[]
+  shippingMethodId String
+  shippingMethod ShippingMethod @relation(fields: [shippingMethodId], references: [id])
+  orderStatusId String
+  orderStatus OrderStatus @relation(fields: [orderStatusId], references: [id])
+  // shipping       OrderShipping[]
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  unitNumber   String?  
+  streetNumber String?  
+  addressLine  String?  
+  city         String
+  region       String
+  countryId    String
+  country      Country  @relation(fields: [countryId], references: [id])
+  userAddress   UserAddress[]
+}
+
+
+model Country{
+  id             String        @id @default(uuid())
+  countryName String
+  address Address[]
+}
+
+model UserAddress{
+    id             String        @id @default(uuid())
+    userId String 
+    addressId  String
+    user User @relation(fields: [userId], references: [id])
+    address Address @relation(fields: [addressId], references: [id])
+}
+
+model ShippingAddr{
+      id             String        @id @default(uuid())
+      orderId  String
+
 }
 
 model OrderItem {
@@ -114,27 +203,69 @@ model OrderItem {
   price      Decimal  @db.Decimal(10, 2)
 }
 
-model Payment {
+// model Payment {
+//   id             String   @id @default(uuid())
+//   order          Order    @relation(fields: [orderId], references: [id])
+//   orderId        String
+//   user           User     @relation(fields: [userId], references: [id])
+//   userId         String
+//   amount         Decimal  @db.Decimal(10, 2)
+//   method         String   @map("payment_method")
+//   status         String   @map("payment_status")
+//   paidAt         DateTime @map("paid_at")
+// }
+
+model ShippingMethod{
   id             String   @id @default(uuid())
-  order          Order    @relation(fields: [orderId], references: [id])
-  orderId        String
-  user           User     @relation(fields: [userId], references: [id])
-  userId         String
-  amount         Decimal  @db.Decimal(10, 2)
-  method         String   @map("payment_method")
-  status         String   @map("payment_status")
-  paidAt         DateTime @map("paid_at")
+  name String
+  price String
+  order Order[]
+}
+
+model OrderStatus{
+    id             String   @id @default(uuid())
+    status  String
+    order Order[]
+}
+
+model OrderLine{
+    id             String   @id @default(uuid())
+    productItemId   String
+    orderId   String
+    qty    Int
+    price     Decimal  @db.Decimal(10, 2)
+    reviews        ProductReview[]
+
 }
 
 model ProductReview {
   id         String   @id @default(uuid())
   user       User     @relation(fields: [userId], references: [id])
   userId     String
-  product    Product  @relation(fields: [productId], references: [id])
-  productId  String
+  orderLine  OrderLine  @relation(fields: [orderLineId], references: [id])
+  orderLineId  String
   rating     Int
   comment    String?
   createdAt  DateTime @default(now()) @map("created_at")
+}
+
+model PromotionCategory{
+    id         String   @id @default(uuid())
+    categoryId    String
+    promotionId String
+    category  Category @relation(fields: [promotionId] ,references: [id])
+    promotion Promotion @relation(fields: [categoryId], references: [id])
+
+}
+
+model Promotion {
+  id           String   @id @default(uuid())
+  name         String
+  description  String
+  discountRate Float     
+  startDate    DateTime  
+  endDate      DateTime  
+  promotionCategory PromotionCategory[]
 }
 
 model ShippingProvider {
@@ -144,19 +275,40 @@ model ShippingProvider {
   cost         Decimal          @db.Decimal(10, 2)
   createdAt    DateTime         @default(now()) @map("created_at")
 
-  orders       OrderShipping[]
+  // orders       OrderShipping[]
 }
 
-model OrderShipping {
-  id                   String            @id @default(uuid())
-  order                Order             @relation(fields: [orderId], references: [id])
-  orderId              String
-  shippingProvider     ShippingProvider @relation(fields: [shippingProviderId], references: [id])
-  shippingProviderId   String
-  trackingNumber       String           @map("tracking_number")
-  shippedAt            DateTime?        @map("shipped_at")
-  deliveredAt          DateTime?        @map("delivered_at")
+model UserPaymentMethod{
+  id           String            @id @default(uuid())
+  userId  String
+  user User @relation(fields: [userId], references: [id])
+  paymentTypeId    String
+  paymentType    PaymentType @relation(fields: [paymentTypeId], references: [id])
+  provider    String
+  accountNumber     Int
+  expiryDate   DateTime
+  isDefault    Boolean   @default(true)
+  order Order[]
 }
+
+
+model PaymentType{
+  id           String            @id @default(uuid())
+  value String
+  userPaymentMethod UserPaymentMethod[]
+    
+}
+
+// model OrderShipping {
+//   id                   String            @id @default(uuid())
+//   order                Order             @relation(fields: [orderId], references: [id])
+//   orderId              String
+//   shippingProvider     ShippingProvider @relation(fields: [shippingProviderId], references: [id])
+//   shippingProviderId   String
+//   trackingNumber       String           @map("tracking_number")
+//   shippedAt            DateTime?        @map("shipped_at")
+//   deliveredAt          DateTime?        @map("delivered_at")
+// }
 
 model OtpRequest {
   id        String   @id @default(uuid())
