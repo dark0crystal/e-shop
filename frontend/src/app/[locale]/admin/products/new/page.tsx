@@ -1,10 +1,47 @@
 "use client"
+import { useForm ,SubmitHandler } from "react-hook-form"
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const schema = z.object({
+    name: z.string(),
+    description:z.string().min(10),
+});
+type FormFields = z.infer<typeof schema>;
 
 export default function AddNewProduct(){
+    /**
+     * Register field :
+     * One of the key concepts in React Hook Form is to register your component into the hook.
+     *This will make its value available for both the form validation and submission.
+     * 
+     * 
+     */
+    const {register , handleSubmit } = useForm<FormFields>({resolver:zodResolver(schema)});
+
+    const onSubmit:SubmitHandler<FormFields>=(data)=>{
+        console.log(data)
+    }
+
     return(
         <div>
-            <form>
-                
+            <form onSubmit={handleSubmit(onSubmit)}>
+            <div>
+                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                 <input
+                   type="text"
+                   {...register('name')}
+                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="Product name"
+                 />
+                 {/* {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>} */}
+              </div>
+
+            <button
+            type="submit"
+            >
+                submit
+            </button>
             </form>
         </div>
 
@@ -92,7 +129,7 @@ export default function AddNewProduct(){
 //     watch,
 //     trigger,
 //   } = useForm<ItemFormFields>({
-//     resolver: zodResolver(itemSchema),
+//     // resolver: zodResolver(itemSchema),
 //     mode: 'onBlur',
 //     defaultValues: {
 //       is_active: true,
