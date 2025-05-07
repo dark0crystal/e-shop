@@ -76,37 +76,38 @@ export default function NewProduct() {
   const hasVariations = applicableVariations.length > 0;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+    console.log("image", e)
+    // const files = e.target.files;
+    // if (!files) return;
 
-    setImageError(null);
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    const newImages: string[] = [];
-    const newPreviewImages: string[] = [];
+    // setImageError(null);
+    // const maxSize = 5 * 1024 * 1024; // 5MB
+    // const newImages: string[] = [];
+    // const newPreviewImages: string[] = [];
 
-    Array.from(files).forEach((file) => {
-      if (file.size > maxSize) {
-        setImageError('Image size must be less than 5MB');
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        setImageError('Only image files are allowed');
-        return;
-      }
+    // Array.from(files).forEach((file) => {
+    //   if (file.size > maxSize) {
+    //     setImageError('Image size must be less than 5MB');
+    //     return;
+    //   }
+    //   if (!file.type.startsWith('image/')) {
+    //     setImageError('Only image files are allowed');
+    //     return;
+    //   }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        newImages.push(result);
-        newPreviewImages.push(result);
-        if (newImages.length === files.length) {
-          setValue('images', [...(watch('images') || []), ...newImages]);
-          setPreviewImages([...previewImages, ...newPreviewImages]);
-          trigger('images');
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    //   const reader = new FileReader();
+    //   reader.onloadend = () => {
+    //     const result = reader.result as string;
+    //     newImages.push(result);
+    //     newPreviewImages.push(result);
+    //     if (newImages.length === files.length) {
+    //       setValue('images', [...(watch('images') || []), ...newImages]);
+    //       setPreviewImages([...previewImages, ...newPreviewImages]);
+    //       trigger('images');
+    //     }
+    //   };
+    //   reader.readAsDataURL(file);
+    // });
   };
 
   const removeImage = (index: number) => {
@@ -140,8 +141,14 @@ export default function NewProduct() {
       };
 
       // Simulate API call (replace with actual API endpoint)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
+      const res = await fetch("http://localhost:8383/api/product/add-new-post", {
+        method: "POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log("res:",res)
       // Store the submitted data
       setSubmittedData(payload);
       reset();
