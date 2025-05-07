@@ -34,7 +34,7 @@ const itemSchema = z.object({
       })
     )
     .optional(),
-}).partial(); // Make all fields optional to allow form submission
+});
 
 type ItemFormFields = z.infer<typeof itemSchema>;
 
@@ -67,16 +67,16 @@ export default function NewProduct() {
   { optionCombination: string[]; stock: number }[]
 >([]);
   const [submittedData, setSubmittedData] = useState<any>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     reset,
     setValue,
     watch,
-  } = useForm<ItemFormFields>({
+  } = useForm<ItemFormFields, any, ItemFormFields>({
     resolver: zodResolver(itemSchema),
     mode: 'onBlur',
     defaultValues: {
@@ -141,13 +141,11 @@ export default function NewProduct() {
   };
 
   const onSubmit = async (data: ItemFormFields) => {
-    console.log('Form submission started', data);
-    setIsSubmitting(true);
-    
+    console.log('data', data);
     try {
       const payload = {
         ...data,
-        category_id: data.childCategory || data.parentCategory || '',
+        category_id: data.childCategory || data.parentCategory,
         variationOptionIds: data.variationOptionIds?.filter(id => id) || [],
         variantStocks: hasVariations ? variantStocks : undefined,
         stock_quantity: hasVariations ? undefined : data.stock_quantity,
@@ -174,12 +172,9 @@ export default function NewProduct() {
       setSubmittedData(result);
       reset();
       setPreviewImages([]);
-      alert('Product submitted successfully!');
     } catch (error) {
       console.error('Error submitting product:', error);
       alert('Failed to submit product. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -187,7 +182,7 @@ export default function NewProduct() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-6">Create New Product</h1>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit as SubmitHandler<ItemFormFields>)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
