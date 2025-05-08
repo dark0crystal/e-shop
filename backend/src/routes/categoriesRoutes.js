@@ -4,13 +4,49 @@ const router = express.Router();
 
 
 // GET all the parent and child categories
-
+// fetch only parent categories
+// fetch child categories
 router.get('/all', async(req, res)=>{
-    const allCategories = await pisma.Category.get({
+    try{
 
-    })
+
+    const allCategories = await pisma.Category.findMany({
+        where:{
+            parentCategoryId:null,
+        },
+        include:{
+            subcategories:true
+        }
+    });
+    res.status(200).json(allCategories);
+    }catch(error){
+        res.send("There is an error:",error)
+    }
 })
 
+// sample json output
+// [
+//     {
+//       "id": "1",
+//       "name": "Clothing",
+//       "description": "All kinds of clothing",
+//       "slug": "clothing",
+//       "subcategories": [
+//         {
+//           "id": "2",
+//           "name": "Shirts",
+//           "parentCategoryId": "1",
+//           ...
+//         },
+//         {
+//           "id": "3",
+//           "name": "Pants",
+//           "parentCategoryId": "1",
+//           ...
+//         }
+//       ]
+//     }
+//   ]
 
 
 // model Category {
