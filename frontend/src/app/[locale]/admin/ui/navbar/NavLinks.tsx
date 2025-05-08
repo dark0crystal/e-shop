@@ -15,6 +15,7 @@ export default async function NavLinks() {
     { name: "Orders", direction: "/admin/orders", icon: <ShoppingCart size={20} /> },
     { name: "Products", direction: "/admin/products", icon: <Package size={20} /> },
     { name: "Manage Ads", direction: "/admin/manage-ads", icon: <MonitorPlay size={20} /> },
+    { name: "Manage Categories", direction: "/admin/manage-categories", icon: <MonitorPlay size={20} /> },
   ];
 
   return (
