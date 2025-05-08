@@ -17,7 +17,7 @@ app.use(express.json()); // To parse JSON request bodies
 
 // Routes
 app.use('/api/auth', authRoutes); 
-app.use('api/product', productsRoutes)
+app.use('/api/product', productsRoutes)
 
 // Start server
 app.listen(8383, () => {
