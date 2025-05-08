@@ -11,7 +11,7 @@ type Variant = {
 
 export default function ManageCategories() {
   const [categories, setCategories] = useState([
-    { id: uuid(), name: 'Clothing', parentId: '' },
+    { id: uuid(), name: '', parentId: '' },
   ]);
   const [variations, setVariations] = useState<Variant[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
