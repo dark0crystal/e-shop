@@ -24,6 +24,38 @@ router.get('/all', async(req, res)=>{
     }
 })
 
+
+router.get('/all-categories-varients', async (req, res) => {
+    try {
+      const allCategories = await prisma.category.findMany({
+        where: {
+          parentCategoryId: null, // Only parent categories
+        },
+        include: {
+          subcategories: {
+            include: {
+              variation: {
+                include: {
+                  variationOption: true,
+                },
+              },
+            },
+          },
+          variation: {
+            include: {
+              variationOption: true,
+            },
+          },
+        },
+      });
+  
+      res.status(200).json(allCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+  
 // sample json output
 // [
 //     {
