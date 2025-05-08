@@ -8,8 +8,6 @@ const router = express.Router();
 // fetch child categories
 router.get('/all', async(req, res)=>{
     try{
-
-
     const allCategories = await pisma.Category.findMany({
         where:{
             parentCategoryId:null,
@@ -24,6 +22,33 @@ router.get('/all', async(req, res)=>{
     }
 })
 
+
+// sample json output of all
+// [
+//     {
+//       "id": "1",
+//       "name": "Clothing",
+//       "description": "All kinds of clothing",
+//       "slug": "clothing",
+//       "subcategories": [
+//         {
+//           "id": "2",
+//           "name": "Shirts",
+//           "parentCategoryId": "1",
+//           ...
+//         },
+//         {
+//           "id": "3",
+//           "name": "Pants",
+//           "parentCategoryId": "1",
+//           ...
+//         }
+//       ]
+//     }
+//   ]
+
+
+//====================================================
 
 router.get('/all-categories-varients', async (req, res) => {
     try {
@@ -55,30 +80,56 @@ router.get('/all-categories-varients', async (req, res) => {
       res.status(500).json({ message: 'Internal server error' });
     }
   });
-  
-// sample json output
+
+  // sample output of /all-categories-varients
+
 // [
 //     {
-//       "id": "1",
+//       "id": "parent-1",
 //       "name": "Clothing",
-//       "description": "All kinds of clothing",
-//       "slug": "clothing",
 //       "subcategories": [
 //         {
-//           "id": "2",
-//           "name": "Shirts",
-//           "parentCategoryId": "1",
-//           ...
+//           "id": "child-1",
+//           "name": "T-Shirts",
+//           "variation": [
+//             {
+//               "id": "var-1",
+//               "name": "Size",
+//               "variationOption": [
+//                 { "id": "opt-1", "value": "S" },
+//                 { "id": "opt-2", "value": "M" },
+//                 { "id": "opt-3", "value": "L" }
+//               ]
+//             },
+//             {
+//               "id": "var-2",
+//               "name": "Color",
+//               "variationOption": [
+//                 { "id": "opt-4", "value": "Red" },
+//                 { "id": "opt-5", "value": "Blue" }
+//               ]
+//             }
+//           ]
 //         },
 //         {
-//           "id": "3",
-//           "name": "Pants",
-//           "parentCategoryId": "1",
-//           ...
+//           "id": "child-2",
+//           "name": "Shoes",
+//           "variation": []
 //         }
-//       ]
+//       ],
+//       "variation": []
 //     }
 //   ]
+  
+
+
+//====================================================
+
+
+
+  
+
+
 
 
 // model Category {
@@ -114,3 +165,6 @@ router.get('/all-categories-varients', async (req, res) => {
 //       variation   Variation @relation(fields: [variationId], references: [id])
 //       productConfig    ProductConfig[]
 //   }
+
+
+
