@@ -127,7 +127,8 @@ router.get('/all-categories-varients', async (req, res) => {
 
 
 router.post('/add-parent-category' ,async (req , res )=>{
-    const {name , slug } = req.body();
+    try{
+        const {name , slug } = req.body();
     if(!name || !slug){
         res.status(404).json({message: 'Attributes not found!'} )
     }
@@ -137,6 +138,11 @@ router.post('/add-parent-category' ,async (req , res )=>{
             slug
         }
     })
+    res.status(200).json({message:"parent category added successfuly !",newCategory})
+    }catch(error){
+        res.status(404).json({message: 'Attributes not found!'} );
+    }
+    
 })
 
 
