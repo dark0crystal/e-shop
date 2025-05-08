@@ -150,7 +150,29 @@ router.post('/add-parent-category' ,async (req , res )=>{
 
 
 //====================================================
-  
+
+// add child category 
+router.post("/add-child-category" , async(req, res)=>{
+    try{
+        const {name , slug , parentCategoryId} = req.body;
+
+    if(!name || !slug || !parentCategoryId){
+        res.status(400).json({message:"properties not found"})
+    }
+    const childCategory = await prisma.category.create({
+        data:{
+            name,
+            slug,
+            parentCategoryId
+        }
+    })
+
+    res.status(200).json({message:"child category added successfully", childCategory})
+
+    }catch(error){
+        res.status(400).json({message:"Internal server error", error})
+    }
+})
 
 export default router;
 
