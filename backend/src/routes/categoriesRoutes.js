@@ -126,7 +126,22 @@ router.get('/all-categories-varients', async (req, res) => {
 //====================================================
 
 
+router.post('/add-parent-category' ,async (req , res )=>{
+    const {name , slug } = req.body();
+    if(!name || !slug){
+        res.status(404).json({message: 'Attributes not found!'} )
+    }
+    const newCategory = await prisma.Category.create({
+        data:{
+            name,
+            slug
+        }
+    })
+})
 
+
+
+//====================================================
   
 
 
