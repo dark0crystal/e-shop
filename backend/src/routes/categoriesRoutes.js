@@ -1,5 +1,5 @@
 import express from 'express'
-
+import prisma from '../prismaClient.js'
 const router = express.Router();
 
 
@@ -128,11 +128,12 @@ router.get('/all-categories-varients', async (req, res) => {
 
 router.post('/add-parent-category' ,async (req , res )=>{
     try{
-        const {name , slug } = req.body();
-    if(!name || !slug){
-        res.status(404).json({message: 'Attributes not found!'} )
-    }
-    const newCategory = await prisma.Category.create({
+        const { name, slug } = req.body;
+        console.log(name , slug)
+        if (!name || !slug) {
+            return res.status(400).json({ message: 'Name and slug are required.' });
+          }
+    const newCategory = await prisma.category.create({
         data:{
             name,
             slug
@@ -140,7 +141,8 @@ router.post('/add-parent-category' ,async (req , res )=>{
     })
     res.status(200).json({message:"parent category added successfuly !",newCategory})
     }catch(error){
-        res.status(404).json({message: 'Attributes not found!'} );
+        console.error(error);
+        return res.status(500).json({ message: 'Server error', error });
     }
     
 })
@@ -150,6 +152,7 @@ router.post('/add-parent-category' ,async (req , res )=>{
 //====================================================
   
 
+export default router;
 
 
 
