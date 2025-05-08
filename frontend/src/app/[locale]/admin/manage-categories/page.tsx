@@ -3,146 +3,206 @@
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+type Variant = {
+  id: string;
+  name: string;
+  options: { id: string; value: string }[];
+};
+
 export default function ManageCategories() {
   const [categories, setCategories] = useState([
     { id: uuid(), name: 'Clothing', parentId: '' },
-    { id: uuid(), name: 'T-Shirt', parentId: '' }, // we'll change this to child below
   ]);
+  const [variations, setVariations] = useState<Variant[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'child' | 'variant' | null>(null);
+  const [currentParentId, setCurrentParentId] = useState<string | null>(null);
 
-  const [variations, setVariations] = useState([
-    {
-      id: uuid(),
-      categoryId: '', // set dynamically
-      name: 'Size',
-      options: [{ id: uuid(), value: 'S' }],
-    },
-  ]);
+  // Form state
+  const [childName, setChildName] = useState('');
+  const [variantList, setVariantList] = useState<Variant[]>([]);
 
-  const handleAddParentCategory = () => {
-    const name = prompt('Enter parent category name:');
-    if (!name) return;
-    setCategories([...categories, { id: uuid(), name, parentId: '' }]);
+  const openModal = (type: 'child' | 'variant', parentId: string) => {
+    setModalType(type);
+    setCurrentParentId(parentId);
+    setChildName('');
+    setVariantList([
+      { id: uuid(), name: '', options: [{ id: uuid(), value: '' }] },
+    ]);
+    setModalOpen(true);
   };
 
-  const handleAddChildCategory = (parentId: string) => {
-    const name = prompt('Enter child category name:');
-    if (!name) return;
-    setCategories([...categories, { id: uuid(), name, parentId }]);
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalType(null);
+    setCurrentParentId(null);
+    setVariantList([]);
   };
 
-  const handleDeleteCategory = (categoryId: string) => {
-    // Remove category and children
-    setCategories((prev) =>
-      prev.filter((cat) => cat.id !== categoryId && cat.parentId !== categoryId)
-    );
-    setVariations((prev) => prev.filter((v) => v.categoryId !== categoryId));
+  const handleAddOption = (variantIndex: number) => {
+    setVariantList((prev) => {
+      const updated = [...prev];
+      updated[variantIndex].options.push({ id: uuid(), value: '' });
+      return updated;
+    });
   };
 
-  const handleAddVariation = (categoryId: string) => {
-    const name = prompt('Enter variation name (e.g. Size):');
-    const option = prompt('Enter first option value (e.g. M):');
-    if (!name || !option) return;
-
-    setVariations([
-      ...variations,
-      {
-        id: uuid(),
-        categoryId,
-        name,
-        options: [{ id: uuid(), value: option }],
-      },
+  const handleAddVariant = () => {
+    setVariantList((prev) => [
+      ...prev,
+      { id: uuid(), name: '', options: [{ id: uuid(), value: '' }] },
     ]);
   };
 
-  const handleDeleteVariation = (variationId: string) => {
-    setVariations((prev) => prev.filter((v) => v.id !== variationId));
+  const handleSubmit = () => {
+    if (!currentParentId) return;
+
+    if (modalType === 'child') {
+      const newChildId = uuid();
+      setCategories((prev) => [
+        ...prev,
+        { id: newChildId, name: childName, parentId: currentParentId },
+      ]);
+      const variantsToAdd = variantList.map((v) => ({
+        ...v,
+        categoryId: newChildId,
+      }));
+      setVariations((prev) => [...prev, ...variantsToAdd]);
+    }
+
+    closeModal();
   };
 
-  return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Manage Categories</h1>
-      <button
-        onClick={handleAddParentCategory}
-        className="bg-blue-600 text-white px-4 py-2 rounded mb-4"
-      >
-        + Add Parent Category
-      </button>
+  const parentCategories = categories.filter((cat) => !cat.parentId);
 
-      {categories
-        .filter((cat) => cat.parentId === '')
-        .map((parent) => (
-          <div key={parent.id} className="bg-gray-100 rounded-xl p-4 mb-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">{parent.name}</h2>
+  const childCategories = (parentId: string) =>
+    categories.filter((cat) => cat.parentId === parentId);
+
+  const getVariations = (categoryId: string) =>
+    variations.filter((v) => v.categoryId === categoryId);
+
+  return (
+    <div className="p-6">
+      <h1 className="text-xl font-bold mb-4">Manage Categories</h1>
+
+      {parentCategories.map((parent) => (
+        <div
+          key={parent.id}
+          className="bg-gray-100 p-4 rounded-xl mb-4 shadow"
+        >
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">{parent.name}</h2>
+            <button
+              onClick={() => openModal('child', parent.id)}
+              className="bg-blue-600 text-white px-2 py-1 rounded"
+            >
+              + Add Child
+            </button>
+          </div>
+
+          {childCategories(parent.id).map((child) => (
+            <div key={child.id} className="ml-4 mt-2 bg-white p-3 rounded">
+              <div className="flex justify-between items-center">
+                <h3>{child.name}</h3>
+                <button
+                  onClick={() => openModal('variant', child.id)}
+                  className="bg-indigo-500 text-white px-2 py-1 rounded"
+                >
+                  + Add Variants
+                </button>
+              </div>
+              <ul className="mt-2 text-sm ml-4 list-disc">
+                {getVariations(child.id).map((v) => (
+                  <li key={v.id}>
+                    {v.name}: {v.options.map((o) => o.value).join(', ')}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-full max-w-xl shadow-lg">
+            <h2 className="text-xl font-bold mb-4">
+              {modalType === 'child' ? 'Add Child Category' : 'Add Variants'}
+            </h2>
+
+            {modalType === 'child' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Child category name"
+                  className="border p-2 rounded w-full mb-4"
+                  value={childName}
+                  onChange={(e) => setChildName(e.target.value)}
+                />
+              </>
+            )}
+
+            {variantList.map((variant, vIndex) => (
+              <div key={variant.id} className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Variant name (e.g. Size)"
+                  className="border p-2 rounded w-full mb-2"
+                  value={variant.name}
+                  onChange={(e) => {
+                    const updated = [...variantList];
+                    updated[vIndex].name = e.target.value;
+                    setVariantList(updated);
+                  }}
+                />
+                {variant.options.map((opt, oIndex) => (
+                  <input
+                    key={opt.id}
+                    type="text"
+                    placeholder={`Option ${oIndex + 1}`}
+                    className="border p-2 rounded w-full mb-1"
+                    value={opt.value}
+                    onChange={(e) => {
+                      const updated = [...variantList];
+                      updated[vIndex].options[oIndex].value = e.target.value;
+                      setVariantList(updated);
+                    }}
+                  />
+                ))}
+                <button
+                  onClick={() => handleAddOption(vIndex)}
+                  className="text-blue-600 text-sm mt-1"
+                >
+                  + Add Option
+                </button>
+              </div>
+            ))}
+
+            <div className="flex justify-between mt-4">
+              <button
+                onClick={handleAddVariant}
+                className="text-green-600 font-medium"
+              >
+                + Add Another Variant
+              </button>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleAddChildCategory(parent.id)}
-                  className="bg-green-500 text-white px-2 rounded"
+                  onClick={closeModal}
+                  className="bg-gray-300 text-black px-4 py-2 rounded"
                 >
-                  + Child
+                  Cancel
                 </button>
                 <button
-                  onClick={() => handleDeleteCategory(parent.id)}
-                  className="bg-red-500 text-white px-2 rounded"
+                  onClick={handleSubmit}
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
                 >
-                  🗑
+                  Save
                 </button>
               </div>
             </div>
-
-            {categories
-              .filter((child) => child.parentId === parent.id)
-              .map((child) => {
-                const childVariations = variations.filter((v) => v.categoryId === child.id);
-                return (
-                  <div key={child.id} className="bg-white rounded-lg p-3 mt-2 ml-4 shadow">
-                    <div className="flex justify-between items-center">
-                      <h3 className="font-medium">{child.name}</h3>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleAddVariation(child.id)}
-                          className="bg-indigo-500 text-white px-2 rounded"
-                        >
-                          + Variant
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategory(child.id)}
-                          className="bg-red-400 text-white px-2 rounded"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </div>
-
-                    {childVariations.length > 0 ? (
-                      <div className="ml-4 mt-2">
-                        {childVariations.map((variation) => (
-                          <div key={variation.id} className="mb-1">
-                            <div className="flex justify-between items-center">
-                              <p className="font-semibold">{variation.name}:</p>
-                              <button
-                                onClick={() => handleDeleteVariation(variation.id)}
-                                className="text-red-500 text-sm"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                            <ul className="list-disc list-inside text-sm">
-                              {variation.options.map((opt) => (
-                                <li key={opt.id}>{opt.value}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 mt-1">No variants</p>
-                    )}
-                  </div>
-                );
-              })}
           </div>
-        ))}
+        </div>
+      )}
     </div>
   );
 }
