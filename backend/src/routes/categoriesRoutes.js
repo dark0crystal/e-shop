@@ -175,26 +175,18 @@ router.post('/add-child-category', async (req, res) => {
 
 
 // =======================================
-// add new varients 
-
+// Add variant
 router.post('/add-variant', async (req, res) => {
     try {
       const { name, categoryId, options } = req.body;
-  
       if (!name || !categoryId) {
         return res.status(400).json({ message: 'Name and categoryId are required' });
       }
-  
-      // Generate slug from name (e.g., "Size" → "size")
       const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  
-      // Check if slug is unique
       const existingVariation = await prisma.variation.findUnique({ where: { slug } });
       if (existingVariation) {
         return res.status(400).json({ message: 'Slug already exists' });
       }
-  
-      // Create variation
       const variation = await prisma.variation.create({
         data: {
           name,
@@ -202,8 +194,6 @@ router.post('/add-variant', async (req, res) => {
           categoryId,
         },
       });
-  
-      // Create variation options if provided
       const variationOptions = options
         ? await prisma.variationOption.createMany({
             data: options.map((value) => ({
@@ -212,7 +202,6 @@ router.post('/add-variant', async (req, res) => {
             })),
           })
         : [];
-  
       res.status(200).json({
         message: 'Variant added successfully',
         variation: {
