@@ -363,7 +363,48 @@ router.put('/edit-variation-option/:id', async (req, res) => {
     }
   });
   // =======================================
-
+// Delete child category
+router.delete('/delete-child-category/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.category.delete({
+        where: { id },
+      });
+      res.status(200).json({ message: 'Child category deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting child category:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
+  // =======================================
+  // Delete variant
+router.delete('/delete-variant/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.variation.delete({
+        where: { id },
+      });
+      res.status(200).json({ message: 'Variant deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting variant:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
+  // =======================================
+  // Delete variation option
+router.delete('/delete-variation-option/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.variationOption.delete({
+        where: { id },
+      });
+      res.status(200).json({ message: 'Variation option deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting variation option:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
+  // =======================================
   // =======================================
 
 export default router;

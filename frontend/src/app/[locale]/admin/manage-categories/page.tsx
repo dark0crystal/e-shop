@@ -20,27 +20,29 @@ export default function ManageCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [variations, setVariations] = useState<Variant[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'parent' | 'child' | 'variant' | null>(null);
+  const [modalType, setModalType] = useState<'parent' | 'child' | 'variant' | 'option' | null>(null);
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   // Form state
   const [parentName, setParentName] = useState('');
-  const [parentSlug, setParentSlug] = useState('');
   const [childName, setChildName] = useState('');
-  const [childSlug, setChildSlug] = useState('');
   const [variantList, setVariantList] = useState<Variant[]>([]);
+  const [selectedVariationId, setSelectedVariationId] = useState<string>('');
+  const [newOptions, setNewOptions] = useState<{ id: string; value: string }[]>([
+    { id: uuid(), value: '' },
+  ]);
 
-  const openModal = (type: 'parent' | 'child' | 'variant', parentId?: string) => {
+  const openModal = (type: 'parent' | 'child' | 'variant' | 'option', parentId?: string) => {
     setModalType(type);
     setCurrentParentId(parentId || null);
     setParentName('');
-    setParentSlug('');
     setChildName('');
-    setChildSlug('');
     setVariantList([
       { id: uuid(), name: '', options: [{ id: uuid(), value: '' }] },
     ]);
+    setSelectedVariationId('');
+    setNewOptions([{ id: uuid(), value: '' }]);
     setSubmissionError(null);
     setModalOpen(true);
   };
@@ -50,6 +52,8 @@ export default function ManageCategories() {
     setModalType(null);
     setCurrentParentId(null);
     setVariantList([]);
+    setSelectedVariationId('');
+    setNewOptions([{ id: uuid(), value: '' }]);
     setSubmissionError(null);
   };
 
@@ -57,6 +61,18 @@ export default function ManageCategories() {
     setVariantList((prev) => {
       const updated = [...prev];
       updated[variantIndex].options.push({ id: uuid(), value: '' });
+      return updated;
+    });
+  };
+
+  const handleAddNewOptionInput = () => {
+    setNewOptions((prev) => [...prev, { id: uuid(), value: '' }]);
+  };
+
+  const handleNewOptionChange = (index: number, value: string) => {
+    setNewOptions((prev) => {
+      const updated = [...prev];
+      updated[index].value = value;
       return updated;
     });
   };
@@ -72,8 +88,8 @@ export default function ManageCategories() {
     setSubmissionError(null);
 
     if (modalType === 'parent') {
-      if (!parentName || !parentSlug) {
-        setSubmissionError('Parent category name and slug are required');
+      if (!parentName) {
+        setSubmissionError('Parent category name is required');
         return;
       }
       try {
@@ -84,7 +100,6 @@ export default function ManageCategories() {
           },
           body: JSON.stringify({
             name: parentName,
-            slug: parentSlug,
           }),
         });
 
@@ -108,8 +123,8 @@ export default function ManageCategories() {
     }
 
     if (modalType === 'child') {
-      if (!currentParentId || !childName || !childSlug) {
-        setSubmissionError('Child category name, slug, and parent category are required');
+      if (!currentParentId || !childName) {
+        setSubmissionError('Child category name and parent category are required');
         return;
       }
       try {
@@ -120,7 +135,6 @@ export default function ManageCategories() {
           },
           body: JSON.stringify({
             name: childName,
-            slug: childSlug,
             parentCategoryId: currentParentId,
           }),
         });
@@ -225,6 +239,51 @@ export default function ManageCategories() {
       }
     }
 
+    if (modalType === 'option') {
+      if (!currentParentId || !selectedVariationId) {
+        setSubmissionError('Variation selection is required');
+        return;
+      }
+      const validOptions = newOptions.filter((opt) => opt.value).map((opt) => opt.value);
+      if (validOptions.length === 0) {
+        setSubmissionError('At least one non-empty option is required');
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:8383/api/categories/add-variation-options', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            variationId: selectedVariationId,
+            options: validOptions,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to add variation options');
+        }
+
+        const data = await res.json();
+        const newOptionsFromResponse = data.options;
+
+        setVariations((prev) =>
+          prev.map((v) =>
+            v.id === selectedVariationId
+              ? { ...v, options: [...v.options, ...newOptionsFromResponse] }
+              : v
+          )
+        );
+      } catch (error: any) {
+        console.error('Failed to add variation options', error);
+        setSubmissionError(error.message || 'Failed to add variation options');
+        return;
+      }
+    }
+
     closeModal();
   };
 
@@ -262,12 +321,20 @@ export default function ManageCategories() {
             <div key={child.id} className="ml-4 mt-2 bg-white p-3 rounded">
               <div className="flex justify-between items-center">
                 <h3>{child.name || 'Unnamed Child Category'}</h3>
-                <button
-                  onClick={() => openModal('variant', child.id)}
-                  className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600"
-                >
-                  + Add Variants
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => openModal('variant', child.id)}
+                    className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600"
+                  >
+                    + Add Variant
+                  </button>
+                  <button
+                    onClick={() => openModal('option', child.id)}
+                    className="bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-600"
+                  >
+                    + Add Options
+                  </button>
+                </div>
               </div>
               <ul className="mt-2 text-sm ml-4 list-disc">
                 {getVariations(child.id).map((v) => (
@@ -289,7 +356,9 @@ export default function ManageCategories() {
                 ? 'Add Parent Category'
                 : modalType === 'child'
                 ? 'Add Child Category'
-                : 'Add Variants'}
+                : modalType === 'variant'
+                ? 'Add Variants'
+                : 'Add Variation Options'}
             </h2>
 
             {submissionError && (
@@ -299,41 +368,23 @@ export default function ManageCategories() {
             )}
 
             {modalType === 'parent' && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Parent category name"
-                  className="border p-2 rounded w-full mb-2"
-                  value={parentName}
-                  onChange={(e) => setParentName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Slug (e.g., electronics)"
-                  className="border p-2 rounded w-full mb-4"
-                  value={parentSlug}
-                  onChange={(e) => setParentSlug(e.target.value)}
-                />
-              </>
+              <input
+                type="text"
+                placeholder="Parent category name"
+                className="border p-2 rounded w-full mb-4"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+              />
             )}
 
             {modalType === 'child' && (
-              <>
-                <input
-                  type="text"
-                  placeholder="Child category name"
-                  className="border p-2 rounded w-full mb-2"
-                  value={childName}
-                  onChange={(e) => setChildName(e.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="Slug (e.g., t-shirts)"
-                  className="border p-2 rounded w-full mb-4"
-                  value={childSlug}
-                  onChange={(e) => setChildSlug(e.target.value)}
-                />
-              </>
+              <input
+                type="text"
+                placeholder="Child category name"
+                className="border p-2 rounded w-full mb-4"
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+              />
             )}
 
             {(modalType === 'child' || modalType === 'variant') &&
@@ -372,6 +423,39 @@ export default function ManageCategories() {
                   </button>
                 </div>
               ))}
+
+            {modalType === 'option' && (
+              <>
+                <select
+                  value={selectedVariationId}
+                  onChange={(e) => setSelectedVariationId(e.target.value)}
+                  className="border p-2 rounded w-full mb-4"
+                >
+                  <option value="">Select a variation</option>
+                  {getVariations(currentParentId!).map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+                {newOptions.map((opt, index) => (
+                  <input
+                    key={opt.id}
+                    type="text"
+                    placeholder={`New option ${index + 1}`}
+                    className="border p-2 rounded w-full mb-1"
+                    value={opt.value}
+                    onChange={(e) => handleNewOptionChange(index, e.target.value)}
+                  />
+                ))}
+                <button
+                  onClick={handleAddNewOptionInput}
+                  className="text-blue-600 text-sm mt-1 hover:underline"
+                >
+                  + Add Another Option
+                </button>
+              </>
+            )}
 
             <div className="flex justify-between mt-4">
               {(modalType === 'child' || modalType === 'variant') && (
