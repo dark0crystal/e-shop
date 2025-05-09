@@ -3,36 +3,28 @@
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import {itemSchema} from './ProductValidationSchema'
-
-
+import { itemSchema } from './ProductValidationSchema';
 
 type ItemFormFields = z.infer<typeof itemSchema>;
 
-const variations = [
-  {
-    id: 'v1',
-    categoryId: '44444444-4444-4444-4444-444444444444',
-    name: 'Size',
-    options: [
-      { id: 'o1', value: 'S' },
-      { id: 'o2', value: 'M' },
-      { id: 'o3', value: 'L' },
-    ],
-  },
-];
+type Variant = {
+  id: string;
+  categoryId: string;
+  name: string;
+  options: { id: string; value: string }[];
+};
 
-const categories = [
-  { id: '11111111-1111-1111-1111-111111111111', name: 'Electronics', parentId: '' },
-  { id: '22222222-2222-2222-2222-222222222222', name: 'Clothing', parentId: '' },
-  { id: '33333333-3333-3333-3333-333333333333', name: 'Home & Kitchen', parentId: '' },
-  { id: '44444444-4444-4444-4444-444444444444', name: 'T-Shirt', parentId: '22222222-2222-2222-2222-222222222222' },
-  { id: '55555555-5555-5555-5555-555555555555', name: 'Shoes', parentId: '22222222-2222-2222-2222-222222222222' },
-];
+type Category = {
+  id: string;
+  name: string;
+  parentId: string;
+};
 
 export default function NewProduct() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [variations, setVariations] = useState<Variant[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [variantStocks, setVariantStocks] = useState<
@@ -40,6 +32,7 @@ export default function NewProduct() {
   >([]);
   const [submittedData, setSubmittedData] = useState<any>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const {
     register,
@@ -50,7 +43,7 @@ export default function NewProduct() {
     watch,
     trigger,
   } = useForm<ItemFormFields>({
-    // resolver: zodResolver(itemSchema),
+    resolver: zodResolver(itemSchema),
     mode: 'onBlur',
     defaultValues: {
       is_active: true,
@@ -68,46 +61,110 @@ export default function NewProduct() {
     },
   });
 
+  // Fetch categories and variations on mount
+  useEffect(() => {
+    const fetchCategoriesAndVariants = async () => {
+      try {
+        const res = await fetch('http://localhost:8383/api/categories/all-categories-variants');
+        if (!res.ok) {
+          throw new Error('Failed to fetch categories and variants');
+        }
+        const data = await res.json();
+
+        // Map categories and variations
+        const fetchedCategories: Category[] = [];
+        const fetchedVariations: Variant[] = [];
+
+        data.forEach((parent: any) => {
+          fetchedCategories.push({
+            id: parent.id,
+            name: parent.name,
+            parentId: '',
+          });
+
+          parent.variation.forEach((v: any) => {
+            fetchedVariations.push({
+              id: v.id,
+              name: v.name,
+              categoryId: parent.id,
+              options: v.variationOption.map((o: any) => ({
+                id: o.id,
+                value: o.value,
+              })),
+            });
+          });
+
+          parent.subcategories.forEach((child: any) => {
+            fetchedCategories.push({
+              id: child.id,
+              name: child.name,
+              parentId: parent.id,
+            });
+
+            child.variation.forEach((v: any) => {
+              fetchedVariations.push({
+                id: v.id,
+                name: v.name,
+                categoryId: child.id,
+                options: v.variationOption.map((o: any) => ({
+                  id: o.id,
+                  value: o.value,
+                })),
+              });
+            });
+          });
+        });
+
+        setCategories(fetchedCategories);
+        setVariations(fetchedVariations);
+      } catch (error: any) {
+        console.error('Error fetching categories and variants:', error);
+        setFetchError(error.message || 'Failed to fetch categories and variants');
+      }
+    };
+
+    fetchCategoriesAndVariants();
+  }, []);
+
   const selectedParentId = watch('parentCategory');
   const parentCategories = categories.filter((cat) => !cat.parentId);
   const childCategories = categories.filter((cat) => cat.parentId === selectedParentId);
   const selectedCategoryId = watch('childCategory') || selectedParentId;
-  const applicableVariations = variations.filter(v => v.categoryId === selectedCategoryId);
+  const applicableVariations = variations.filter((v) => v.categoryId === selectedCategoryId);
   const hasVariations = applicableVariations.length > 0;
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("image", e)
-    // const files = e.target.files;
-    // if (!files) return;
+    const files = e.target.files;
+    if (!files) return;
 
-    // setImageError(null);
-    // const maxSize = 5 * 1024 * 1024; // 5MB
-    // const newImages: string[] = [];
-    // const newPreviewImages: string[] = [];
+    setImageError(null);
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const newImages: string[] = [];
+    const newPreviewImages: string[] = [];
 
-    // Array.from(files).forEach((file) => {
-    //   if (file.size > maxSize) {
-    //     setImageError('Image size must be less than 5MB');
-    //     return;
-    //   }
-    //   if (!file.type.startsWith('image/')) {
-    //     setImageError('Only image files are allowed');
-    //     return;
-    //   }
+    Array.from(files).forEach((file) => {
+      if (file.size > maxSize) {
+        setImageError('Image size must be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setImageError('Only image files are allowed');
+        return;
+      }
 
-    //   const reader = new FileReader();
-    //   reader.onloadend = () => {
-    //     const result = reader.result as string;
-    //     newImages.push(result);
-    //     newPreviewImages.push(result);
-    //     if (newImages.length === files.length) {
-    //       setValue('images', [...(watch('images') || []), ...newImages]);
-    //       setPreviewImages([...previewImages, ...newPreviewImages]);
-    //       trigger('images');
-    //     }
-    //   };
-    //   reader.readAsDataURL(file);
-    // });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        newImages.push(result);
+        newPreviewImages.push(result);
+        if (newImages.length === files.length) {
+          setValue('images', [...(watch('images') || []), ...newImages]);
+          setPreviewImages([...previewImages, ...newPreviewImages]);
+          trigger('images');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const removeImage = (index: number) => {
@@ -135,21 +192,24 @@ export default function NewProduct() {
       const payload = {
         ...data,
         category_id: categoryId,
-        variationOptionIds: data.variationOptionIds?.filter(id => id) || [],
+        variationOptionIds: data.variationOptionIds?.filter((id) => id) || [],
         variantStocks: hasVariations ? variantStocks : undefined,
         stock_quantity: hasVariations ? undefined : data.stock_quantity,
       };
 
-      // Simulate API call (replace with actual API endpoint)
-      const res = await fetch("http://localhost:8383/api/product/add-new-post", {
-        method: "POST",
-        headers:{
-            "Content-Type":"application/json"
+      const res = await fetch('http://localhost:8383/api/product/add-new-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
       });
-      console.log("res:",res)
-      // Store the submitted data
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Failed to submit product');
+      }
+
       setSubmittedData(payload);
       reset();
       setPreviewImages([]);
@@ -164,6 +224,11 @@ export default function NewProduct() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-6">Create New Product</h1>
+        {fetchError && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+            {fetchError}
+          </div>
+        )}
         {submissionError && (
           <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
             {submissionError}
@@ -191,18 +256,22 @@ export default function NewProduct() {
                   rows={4}
                   placeholder="Product description"
                 />
-                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>}
+                {errors.description && (
+                  <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Parent Category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Parent Category
+                </label>
                 <select
                   {...register('parentCategory')}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   onChange={(e) => {
                     setValue('parentCategory', e.target.value);
-                    setValue('childCategory', ''); // Reset child category when parent changes
-                    setValue('category_id', e.target.value); // Set category_id to parent
+                    setValue('childCategory', ''); // Reset child category
+                    setValue('category_id', e.target.value);
                     trigger('category_id');
                   }}
                 >
@@ -213,7 +282,9 @@ export default function NewProduct() {
                     </option>
                   ))}
                 </select>
-                {errors.parentCategory && <p className="text-red-500 text-sm mt-1">{errors.parentCategory.message}</p>}
+                {errors.parentCategory && (
+                  <p className="text-red-500 text-sm mt-1">{errors.parentCategory.message}</p>
+                )}
               </div>
 
               {selectedParentId && childCategories.length > 0 && (
@@ -235,7 +306,9 @@ export default function NewProduct() {
                       </option>
                     ))}
                   </select>
-                  {errors.childCategory && <p className="text-red-500 text-sm mt-1">{errors.childCategory.message}</p>}
+                  {errors.childCategory && (
+                    <p className="text-red-500 text-sm mt-1">{errors.childCategory.message}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -255,14 +328,18 @@ export default function NewProduct() {
 
               {!hasVariations && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stock Quantity
+                  </label>
                   <input
                     type="number"
                     {...register('stock_quantity', { valueAsNumber: true })}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="0"
                   />
-                  {errors.stock_quantity && <p className="text-red-500 text-sm mt-1">{errors.stock_quantity.message}</p>}
+                  {errors.stock_quantity && (
+                    <p className="text-red-500 text-sm mt-1">{errors.stock_quantity.message}</p>
+                  )}
                 </div>
               )}
 
@@ -295,7 +372,9 @@ export default function NewProduct() {
                   id="is_active"
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>
+                <label htmlFor="is_active" className="text-sm text-gray-700">
+                  Active
+                </label>
               </div>
             </div>
           </div>
@@ -303,41 +382,54 @@ export default function NewProduct() {
           {hasVariations && (
             <div className="space-y-4">
               <h2 className="text-lg font-semibold">Stock for Variant Combinations</h2>
-              {generateCombinations(applicableVariations.map(v => v.options.map(o => o.id))).map((combination, idx) => {
-                const label = combination.map(id => {
-                  const option = variations.flatMap(v => v.options).find(o => o.id === id);
-                  return option?.value || '';
-                }).join(' / ');
+              {generateCombinations(applicableVariations.map((v) => v.options.map((o) => o.id))).map(
+                (combination, idx) => {
+                  const label = combination
+                    .map((id) => {
+                      const option = variations.flatMap((v) => v.options).find((o) => o.id === id);
+                      return option?.value || '';
+                    })
+                    .join(' / ');
 
-                return (
-                  <div key={idx} className="flex items-center gap-4">
-                    <span className="min-w-[200px]">{label}</span>
-                    <input
-                      type="number"
-                      className="border border-gray-300 px-3 py-1 rounded w-32"
-                      placeholder="Stock"
-                      min={0}
-                      value={variantStocks.find(v => JSON.stringify(v.optionCombination) === JSON.stringify(combination))?.stock || ''}
-                      onChange={(e) => {
-                        const newStock = parseInt(e.target.value) || 0;
-                        setVariantStocks((prev) => {
-                          const updated = [...prev];
-                          const index = updated.findIndex(v => JSON.stringify(v.optionCombination) === JSON.stringify(combination));
-                          if (index > -1) {
-                            updated[index].stock = newStock;
-                          } else {
-                            updated.push({ optionCombination: combination, stock: newStock });
-                          }
-                          setValue('variantStocks', updated);
-                          trigger('variantStocks');
-                          return updated;
-                        });
-                      }}
-                    />
-                  </div>
-                );
-              })}
-              {errors.variantStocks && <p className="text-red-500 text-sm mt-1">{errors.variantStocks.message}</p>}
+                  return (
+                    <div key={idx} className="flex items-center gap-4">
+                      <span className="min-w-[200px]">{label}</span>
+                      <input
+                        type="number"
+                        className="border border-gray-300 px-3 py-1 rounded w-32"
+                        placeholder="Stock"
+                        min={0}
+                        value={
+                          variantStocks.find(
+                            (v) => JSON.stringify(v.optionCombination) === JSON.stringify(combination)
+                          )?.stock || ''
+                        }
+                        onChange={(e) => {
+                          const newStock = parseInt(e.target.value) || 0;
+                          setVariantStocks((prev) => {
+                            const updated = [...prev];
+                            const index = updated.findIndex(
+                              (v) =>
+                                JSON.stringify(v.optionCombination) === JSON.stringify(combination)
+                            );
+                            if (index > -1) {
+                              updated[index].stock = newStock;
+                            } else {
+                              updated.push({ optionCombination: combination, stock: newStock });
+                            }
+                            setValue('variantStocks', updated);
+                            trigger('variantStocks');
+                            return updated;
+                          });
+                        }}
+                      />
+                    </div>
+                  );
+                }
+              )}
+              {errors.variantStocks && (
+                <p className="text-red-500 text-sm mt-1">{errors.variantStocks.message}</p>
+              )}
             </div>
           )}
 
@@ -372,7 +464,9 @@ export default function NewProduct() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-6 py-2 rounded-lg text-white font-semibold ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              className={`px-6 py-2 rounded-lg text-white font-semibold ${
+                isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
             </button>
