@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuid } from 'uuid';
 
 type Variant = {
@@ -20,7 +20,17 @@ export default function ManageCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [variations, setVariations] = useState<Variant[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'parent' | 'child' | 'variant' | 'option' | null>(null);
+  const [modalType, setModalType] = useState<
+    | 'parent'
+    | 'child'
+    | 'variant'
+    | 'option'
+    | 'edit-parent'
+    | 'edit-child'
+    | 'edit-variant'
+    | 'edit-option'
+    | null
+  >(null);
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
 
@@ -32,17 +42,92 @@ export default function ManageCategories() {
   const [newOptions, setNewOptions] = useState<{ id: string; value: string }[]>([
     { id: uuid(), value: '' },
   ]);
+  const [editId, setEditId] = useState<string>('');
 
-  const openModal = (type: 'parent' | 'child' | 'variant' | 'option', parentId?: string) => {
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:8383/api/categories/all-categories-variants');
+        if (!res.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const data = await res.json();
+
+        // Map categories and variations
+        const fetchedCategories: Category[] = [];
+        const fetchedVariations: Variant[] = [];
+
+        data.forEach((parent: any) => {
+          fetchedCategories.push({
+            id: parent.id,
+            name: parent.name,
+            parentId: '',
+          });
+
+          parent.variation.forEach((v: any) => {
+            fetchedVariations.push({
+              id: v.id,
+              name: v.name,
+              categoryId: parent.id,
+              options: v.variationOption.map((o: any) => ({
+                id: o.id,
+                value: o.value,
+              })),
+            });
+          });
+
+          parent.subcategories.forEach((child: any) => {
+            fetchedCategories.push({
+              id: child.id,
+              name: child.name,
+              parentId: parent.id,
+            });
+
+            child.variation.forEach((v: any) => {
+              fetchedVariations.push({
+                id: v.id,
+                name: v.name,
+                categoryId: child.id,
+                options: v.variationOption.map((o: any) => ({
+                  id: o.id,
+                  value: o.value,
+                })),
+              });
+            });
+          });
+        });
+
+        setCategories(fetchedCategories);
+        setVariations(fetchedVariations);
+      } catch (error: any) {
+        console.error('Error fetching categories:', error);
+        setSubmissionError(error.message || 'Failed to fetch categories');
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const openModal = (
+    type: 'parent' | 'child' | 'variant' | 'option' | 'edit-parent' | 'edit-child' | 'edit-variant' | 'edit-option',
+    parentId?: string,
+    editData?: { id: string; name?: string; value?: string }
+  ) => {
     setModalType(type);
     setCurrentParentId(parentId || null);
-    setParentName('');
-    setChildName('');
-    setVariantList([
-      { id: uuid(), name: '', options: [{ id: uuid(), value: '' }] },
-    ]);
+    setParentName(editData?.name || '');
+    setChildName(editData?.name || '');
+    setVariantList(
+      editData?.name
+        ? [{ id: uuid(), name: editData.name, options: [{ id: uuid(), value: '' }] }]
+        : [{ id: uuid(), name: '', options: [{ id: uuid(), value: '' }] }]
+    );
     setSelectedVariationId('');
-    setNewOptions([{ id: uuid(), value: '' }]);
+    setNewOptions(
+      editData?.value ? [{ id: uuid(), value: editData.value }] : [{ id: uuid(), value: '' }]
+    );
+    setEditId(editData?.id || '');
     setSubmissionError(null);
     setModalOpen(true);
   };
@@ -54,6 +139,7 @@ export default function ManageCategories() {
     setVariantList([]);
     setSelectedVariationId('');
     setNewOptions([{ id: uuid(), value: '' }]);
+    setEditId('');
     setSubmissionError(null);
   };
 
@@ -162,7 +248,6 @@ export default function ManageCategories() {
             categoryId: newChildId,
           }));
 
-        // Add variants for child category
         for (const variant of variantsToAdd) {
           const res = await fetch('http://localhost:8383/api/categories/add-variant', {
             method: 'POST',
@@ -182,7 +267,7 @@ export default function ManageCategories() {
           }
 
           const data = await res.json();
-          variant.id = data.variation.id; // Update with backend ID
+          variant.id = data.variation.id;
         }
 
         setVariations((prev) => [...prev, ...variantsToAdd]);
@@ -228,7 +313,7 @@ export default function ManageCategories() {
           }
 
           const data = await res.json();
-          variant.id = data.variation.id; // Update with backend ID
+          variant.id = data.variation.id;
         }
 
         setVariations((prev) => [...prev, ...variantsToAdd]);
@@ -284,7 +369,192 @@ export default function ManageCategories() {
       }
     }
 
+    if (modalType === 'edit-parent') {
+      if (!parentName) {
+        setSubmissionError('Parent category name is required');
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:8383/api/categories/edit-parent-category/${editId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: parentName,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to update parent category');
+        }
+
+        const data = await res.json();
+        const updatedCategory = data.updatedCategory;
+
+        setCategories((prev) =>
+          prev.map((c) => (c.id === editId ? { ...c, name: updatedCategory.name } : c))
+        );
+      } catch (error: any) {
+        console.error('Failed to update parent category', error);
+        setSubmissionError(error.message || 'Failed to update parent category');
+        return;
+      }
+    }
+
+    if (modalType === 'edit-child') {
+      if (!childName) {
+        setSubmissionError('Child category name is required');
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:8383/api/categories/edit-child-category/${editId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: childName,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to update child category');
+        }
+
+        const data = await res.json();
+        const updatedCategory = data.updatedCategory;
+
+        setCategories((prev) =>
+          prev.map((c) => (c.id === editId ? { ...c, name: updatedCategory.name } : c))
+        );
+      } catch (error: any) {
+        console.error('Failed to update child category', error);
+        setSubmissionError(error.message || 'Failed to update child category');
+        return;
+      }
+    }
+
+    if (modalType === 'edit-variant') {
+      if (!variantList[0].name) {
+        setSubmissionError('Variant name is required');
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:8383/api/categories/edit-variant/${editId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: variantList[0].name,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to update variant');
+        }
+
+        const data = await res.json();
+        const updatedVariation = data.updatedVariation;
+
+        setVariations((prev) =>
+          prev.map((v) => (v.id === editId ? { ...v, name: updatedVariation.name } : v))
+        );
+      } catch (error: any) {
+        console.error('Failed to update variant', error);
+        setSubmissionError(error.message || 'Failed to update variant');
+        return;
+      }
+    }
+
+    if (modalType === 'edit-option') {
+      if (!newOptions[0].value) {
+        setSubmissionError('Option value is required');
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:8383/api/categories/edit-variation-option/${editId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            value: newOptions[0].value,
+          }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || 'Failed to update variation option');
+        }
+
+        const data = await res.json();
+        const updatedOption = data.updatedOption;
+
+        setVariations((prev) =>
+          prev.map((v) =>
+            v.options.some((o) => o.id === editId)
+              ? {
+                  ...v,
+                  options: v.options.map((o) =>
+                    o.id === editId ? { ...o, value: updatedOption.value } : o
+                  ),
+                }
+              : v
+          )
+        );
+      } catch (error: any) {
+        console.error('Failed to update variation option', error);
+        setSubmissionError(error.message || 'Failed to update variation option');
+        return;
+      }
+    }
+
     closeModal();
+  };
+
+  const handleDelete = async (
+    type: 'parent' | 'child' | 'variant' | 'option',
+    id: string
+  ) => {
+    try {
+      const endpoint = {
+        parent: `delete-parent-category/${id}`,
+        child: `delete-child-category/${id}`,
+        variant: `delete-variant/${id}`,
+        option: `delete-variation-option/${id}`,
+      }[type];
+
+      const res = await fetch(`http://localhost:8383/api/categories/${endpoint}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || `Failed to delete ${type}`);
+      }
+
+      if (type === 'parent' || type === 'child') {
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        setVariations((prev) => prev.filter((v) => v.categoryId !== id));
+      } else if (type === 'variant') {
+        setVariations((prev) => prev.filter((v) => v.id !== id));
+      } else if (type === 'option') {
+        setVariations((prev) =>
+          prev.map((v) => ({
+            ...v,
+            options: v.options.filter((o) => o.id !== id),
+          }))
+        );
+      }
+    } catch (error: any) {
+      console.error(`Failed to delete ${type}`, error);
+      setSubmissionError(error.message || `Failed to delete ${type}`);
+    }
   };
 
   const parentCategories = categories.filter((cat) => !cat.parentId);
@@ -309,12 +579,26 @@ export default function ManageCategories() {
         <div key={parent.id} className="bg-gray-100 p-4 rounded-xl mb-4 shadow">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold">{parent.name || 'Unnamed Category'}</h2>
-            <button
-              onClick={() => openModal('child', parent.id)}
-              className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-            >
-              + Add Child
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openModal('edit-parent', undefined, { id: parent.id, name: parent.name })}
+                className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete('parent', parent.id)}
+                className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => openModal('child', parent.id)}
+                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+              >
+                + Add Child
+              </button>
+            </div>
           </div>
 
           {childCategories(parent.id).map((child) => (
@@ -322,6 +606,18 @@ export default function ManageCategories() {
               <div className="flex justify-between items-center">
                 <h3>{child.name || 'Unnamed Child Category'}</h3>
                 <div className="flex gap-2">
+                  <button
+                    onClick={() => openModal('edit-child', parent.id, { id: child.id, name: child.name })}
+                    className="bg-yellow-500 text-white px-2 py-1 rounded hover:bg-yellow-600"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete('child', child.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
                   <button
                     onClick={() => openModal('variant', child.id)}
                     className="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600"
@@ -338,10 +634,49 @@ export default function ManageCategories() {
               </div>
               <ul className="mt-2 text-sm ml-4 list-disc">
                 {getVariations(child.id).map((v) => (
-                  <li key={v.id}>
-                    {v.name}: {v.options.map((o) => o.value).join(', ')}
+                  <li key={v.id} className="flex justify-between items-center">
+                    <span>
+                      {v.name}: {v.options.map((o) => o.value).join(', ')}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => openModal('edit-variant', child.id, { id: v.id, name: v.name })}
+                        className="bg-yellow-500 text-white px-1 py-0.5 rounded hover:bg-yellow-600"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete('variant', v.id)}
+                        className="bg-red-500 text-white px-1 py-0.5 rounded hover:bg-red-600"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </li>
                 ))}
+                {getVariations(child.id).flatMap((v) =>
+                  v.options.map((o) => (
+                    <li key={o.id} className="flex justify-between items-center ml-4">
+                      <span>Option: {o.value}</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            openModal('edit-option', child.id, { id: o.id, value: o.value })
+                          }
+                          className="bg-yellow-500 text-white px-1 py-0.5 rounded hover:bg-yellow-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete('option', o.id)}
+                          className="bg-red-500 text-white px-1 py-0.5 rounded hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))
+                )}
               </ul>
             </div>
           ))}
@@ -358,7 +693,15 @@ export default function ManageCategories() {
                 ? 'Add Child Category'
                 : modalType === 'variant'
                 ? 'Add Variants'
-                : 'Add Variation Options'}
+                : modalType === 'option'
+                ? 'Add Variation Options'
+                : modalType === 'edit-parent'
+                ? 'Edit Parent Category'
+                : modalType === 'edit-child'
+                ? 'Edit Child Category'
+                : modalType === 'edit-variant'
+                ? 'Edit Variant'
+                : 'Edit Variation Option'}
             </h2>
 
             {submissionError && (
@@ -367,7 +710,7 @@ export default function ManageCategories() {
               </div>
             )}
 
-            {modalType === 'parent' && (
+            {['parent', 'edit-parent'].includes(modalType!) && (
               <input
                 type="text"
                 placeholder="Parent category name"
@@ -377,7 +720,7 @@ export default function ManageCategories() {
               />
             )}
 
-            {modalType === 'child' && (
+            {['child', 'edit-child'].includes(modalType!) && (
               <input
                 type="text"
                 placeholder="Child category name"
@@ -424,6 +767,20 @@ export default function ManageCategories() {
                 </div>
               ))}
 
+            {modalType === 'edit-variant' && (
+              <input
+                type="text"
+                placeholder="Variant name (e.g., Size)"
+                className="border p-2 rounded w-full mb-4"
+                value={variantList[0].name}
+                onChange={(e) => {
+                  const updated = [...variantList];
+                  updated[0].name = e.target.value;
+                  setVariantList(updated);
+                }}
+              />
+            )}
+
             {modalType === 'option' && (
               <>
                 <select
@@ -455,6 +812,16 @@ export default function ManageCategories() {
                   + Add Another Option
                 </button>
               </>
+            )}
+
+            {modalType === 'edit-option' && (
+              <input
+                type="text"
+                placeholder="Option value"
+                className="border p-2 rounded w-full mb-4"
+                value={newOptions[0].value}
+                onChange={(e) => handleNewOptionChange(0, e.target.value)}
+              />
             )}
 
             <div className="flex justify-between mt-4">
