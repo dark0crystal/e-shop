@@ -50,7 +50,8 @@ router.get('/all', async(req, res)=>{
 
 //====================================================
 // get all the parent and child categories , also the varuents and varients options
-router.get('/all-categories-varients', async (req, res) => {
+// Get all categories, subcategories, variations, and options
+router.get('/all-categories-variants', async (req, res) => {
     try {
       const allCategories = await prisma.category.findMany({
         where: {
@@ -80,7 +81,6 @@ router.get('/all-categories-varients', async (req, res) => {
       res.status(500).json({ message: 'Internal server error' });
     }
   });
-
   // sample output of /all-categories-varients
 
 // [
@@ -126,54 +126,49 @@ router.get('/all-categories-varients', async (req, res) => {
 //====================================================
 
 
-router.post('/add-parent-category' ,async (req , res )=>{
-    try{
-        const { name, slug } = req.body;
-        console.log(name , slug)
-        if (!name || !slug) {
-            return res.status(400).json({ message: 'Name and slug are required.' });
-          }
-    const newCategory = await prisma.category.create({
-        data:{
-            name,
-            slug
-        }
-    })
-    res.status(200).json({message:"parent category added successfuly !",newCategory})
-    }catch(error){
-        console.error(error);
-        return res.status(500).json({ message: 'Server error', error });
+router.post('/add-parent-category', async (req, res) => {
+    try {
+      const { name } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: 'Name is required' });
+      }
+      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existingCategory = await prisma.category.findUnique({ where: { slug } });
+      if (existingCategory) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+      const newCategory = await prisma.category.create({
+        data: { name, slug },
+      });
+      res.status(200).json({ message: 'Parent category added successfully', newCategory });
+    } catch (error) {
+      res.status(400).json({ message: 'Internal server error', error });
     }
-    
-})
-
+  });
 
 
 //====================================================
 
 // add child category 
-router.post("/add-child-category" , async(req, res)=>{
-    try{
-        const {name , slug , parentCategoryId} = req.body;
-        console.log(name , slug , parentCategoryId)
-
-    if(!name || !slug || !parentCategoryId){
-        res.status(400).json({message:"properties not found"})
+router.post('/add-child-category', async (req, res) => {
+    try {
+      const { name, parentCategoryId } = req.body;
+      if (!name || !parentCategoryId) {
+        return res.status(400).json({ message: 'Name and parentCategoryId are required' });
+      }
+      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existingCategory = await prisma.category.findUnique({ where: { slug } });
+      if (existingCategory) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+      const childCategory = await prisma.category.create({
+        data: { name, slug, parentCategoryId },
+      });
+      res.status(200).json({ message: 'Child category added successfully', childCategory });
+    } catch (error) {
+      res.status(400).json({ message: 'Internal server error', error });
     }
-    const childCategory = await prisma.category.create({
-        data:{
-            name,
-            slug,
-            parentCategoryId:"9ef2cf2a-b8a5-43f7-99f6-08093a569514"
-        }
-    })
-
-    res.status(200).json({message:"child category added successfully", childCategory})
-
-    }catch(error){
-        res.status(400).json({message:"Internal server error", error})
-    }
-})
+  });
 
 
 // =======================================
