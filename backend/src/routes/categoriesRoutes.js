@@ -151,7 +151,7 @@ router.post('/add-parent-category', async (req, res) => {
 
 //====================================================
 
-// add child category 
+// Add child category
 router.post('/add-child-category', async (req, res) => {
     try {
       const { name, parentCategoryId } = req.body;
@@ -168,6 +168,7 @@ router.post('/add-child-category', async (req, res) => {
       });
       res.status(200).json({ message: 'Child category added successfully', childCategory });
     } catch (error) {
+      console.error('Error adding child category:', error);
       res.status(400).json({ message: 'Internal server error', error });
     }
   });
