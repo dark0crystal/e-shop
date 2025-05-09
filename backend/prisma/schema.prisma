@@ -18,7 +18,6 @@ model User {
   isAdmin      Boolean   @default(false) @map("is_admin")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
-
   wishlists    Wishlist[]
   cartItems    CartItem[]
   orders       Order[]
@@ -99,6 +98,7 @@ model Variation{
   id         String   @id @default(uuid())
   categoryId String 
   name String 
+  slug              String     @unique
   category    Category @relation(fields: [categoryId],references: [id])
   variationOption            VariationOption[]
   // productConfig              ProductConfig[]
