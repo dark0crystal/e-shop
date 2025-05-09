@@ -179,17 +179,97 @@ router.post("/add-child-category" , async(req, res)=>{
 // =======================================
 // add new varients 
 
-router.post('/add-varient' ,async (req ,res)=>{
-    try{
-        const 
-
-    }catch(error){
-        res.status(400).json({message:"Internal server error", error})
+router.post('/add-variant', async (req, res) => {
+    try {
+      const { name, categoryId, options } = req.body;
+  
+      if (!name || !categoryId) {
+        return res.status(400).json({ message: 'Name and categoryId are required' });
+      }
+  
+      // Generate slug from name (e.g., "Size" → "size")
+      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+      // Check if slug is unique
+      const existingVariation = await prisma.variation.findUnique({ where: { slug } });
+      if (existingVariation) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+  
+      // Create variation
+      const variation = await prisma.variation.create({
+        data: {
+          name,
+          slug,
+          categoryId,
+        },
+      });
+  
+      // Create variation options if provided
+      const variationOptions = options
+        ? await prisma.variationOption.createMany({
+            data: options.map((value) => ({
+              variationId: variation.id,
+              value,
+            })),
+          })
+        : [];
+  
+      res.status(200).json({
+        message: 'Variant added successfully',
+        variation: {
+          ...variation,
+          variationOptions: variationOptions.count ? options : [],
+        },
+      });
+    } catch (error) {
+      console.error('Error adding variant:', error);
+      res.status(400).json({ message: 'Internal server error', error });
     }
-})
-
+  });
 
 // =======================================
+
+router.post('/add-variation-options', async (req, res) => {
+    try {
+      const { variationId, options } = req.body;
+  
+      if (!variationId || !options || !Array.isArray(options) || options.length === 0) {
+        return res.status(400).json({ message: 'variationId and non-empty options array are required' });
+      }
+  
+      // Verify variation exists
+      const variation = await prisma.variation.findUnique({
+        where: { id: variationId },
+      });
+      if (!variation) {
+        return res.status(404).json({ message: 'Variation not found' });
+      }
+  
+      // Create variation options
+      const createdOptions = await prisma.variationOption.createMany({
+        data: options.map((value) => ({
+          variationId,
+          value,
+        })),
+      });
+  
+      res.status(200).json({
+        message: 'Variation options added successfully',
+        variationId,
+        options: options.map((value, index) => ({
+          id: `new-option-${index}-${Date.now()}`, // Temporary ID for frontend
+          value,
+        })),
+      });
+    } catch (error) {
+      console.error('Error adding variation options:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
+
+
+  // =======================================
 
 export default router;
 
