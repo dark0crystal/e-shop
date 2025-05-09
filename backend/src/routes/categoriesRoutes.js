@@ -304,7 +304,31 @@ router.put('/edit-child-category/:id', async (req, res) => {
     }
   });
 // =======================================
-
+// Edit variant
+router.put('/edit-variant/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: 'Name is required' });
+      }
+      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const existingVariation = await prisma.variation.findFirst({
+        where: { slug, id: { not: id } },
+      });
+      if (existingVariation) {
+        return res.status(400).json({ message: 'Slug already exists' });
+      }
+      const updatedVariation = await prisma.variation.update({
+        where: { id },
+        data: { name, slug },
+      });
+      res.status(200).json({ message: 'Variant updated successfully', updatedVariation });
+    } catch (error) {
+      console.error('Error updating variant:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
 // =======================================
 
 export default router;
