@@ -49,7 +49,7 @@ router.get('/all', async(req, res)=>{
 
 
 //====================================================
-
+// get all the parent and child categories , also the varuents and varients options
 router.get('/all-categories-varients', async (req, res) => {
     try {
       const allCategories = await prisma.category.findMany({
@@ -155,6 +155,7 @@ router.post('/add-parent-category' ,async (req , res )=>{
 router.post("/add-child-category" , async(req, res)=>{
     try{
         const {name , slug , parentCategoryId} = req.body;
+        console.log(name , slug , parentCategoryId)
 
     if(!name || !slug || !parentCategoryId){
         res.status(400).json({message:"properties not found"})
@@ -163,7 +164,7 @@ router.post("/add-child-category" , async(req, res)=>{
         data:{
             name,
             slug,
-            parentCategoryId
+            parentCategoryId:"9ef2cf2a-b8a5-43f7-99f6-08093a569514"
         }
     })
 
@@ -173,6 +174,22 @@ router.post("/add-child-category" , async(req, res)=>{
         res.status(400).json({message:"Internal server error", error})
     }
 })
+
+
+// =======================================
+// add new varients 
+
+router.post('/add-varient' ,async (req ,res)=>{
+    try{
+        const 
+
+    }catch(error){
+        res.status(400).json({message:"Internal server error", error})
+    }
+})
+
+
+// =======================================
 
 export default router;
 
