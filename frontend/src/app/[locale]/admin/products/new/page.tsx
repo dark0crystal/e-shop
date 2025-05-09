@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { createClient } from '@supabase/supabase-js';
 import { itemSchema } from './ProductValidationSchema';
+import { v4 as uuidv4 } from 'uuid';
 
 type ItemFormFields = z.infer<typeof itemSchema>;
 
@@ -22,10 +24,17 @@ type Category = {
   parentId: string;
 };
 
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
 export default function NewProduct() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [variations, setVariations] = useState<Variant[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]); // Store Supabase public URLs
   const [imageError, setImageError] = useState<string | null>(null);
   const [variantStocks, setVariantStocks] = useState<
     { optionCombination: string[]; stock: number }[]
@@ -71,7 +80,6 @@ export default function NewProduct() {
         }
         const data = await res.json();
 
-        // Map categories and variations
         const fetchedCategories: Category[] = [];
         const fetchedVariations: Variant[] = [];
 
@@ -133,16 +141,16 @@ export default function NewProduct() {
   const applicableVariations = variations.filter((v) => v.categoryId === selectedCategoryId);
   const hasVariations = applicableVariations.length > 0;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     setImageError(null);
     const maxSize = 5 * 1024 * 1024; // 5MB
-    const newImages: string[] = [];
     const newPreviewImages: string[] = [];
+    const newImageUrls: string[] = [];
 
-    Array.from(files).forEach((file) => {
+    for (const file of Array.from(files)) {
       if (file.size > maxSize) {
         setImageError('Image size must be less than 5MB');
         return;
@@ -152,26 +160,57 @@ export default function NewProduct() {
         return;
       }
 
+      // Generate unique filename
+      const fileExtension = file.name.split('.').pop();
+      const fileName = `product-${uuidv4()}.${fileExtension}`;
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, file, {
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        setImageError(`Failed to upload image: ${uploadError.message}`);
+        return;
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(fileName);
+
+      if (!publicUrlData || !publicUrlData.publicUrl) {
+        setImageError('Failed to generate public URL for image');
+        return;
+      }
+
+      newImageUrls.push(publicUrlData.publicUrl);
+
+      // Create preview URL for display
       const reader = new FileReader();
       reader.onloadend = () => {
-        const result = reader.result as string;
-        newImages.push(result);
-        newPreviewImages.push(result);
-        if (newImages.length === files.length) {
-          setValue('images', [...(watch('images') || []), ...newImages]);
-          setPreviewImages([...previewImages, ...newPreviewImages]);
+        newPreviewImages.push(reader.result as string);
+        if (newPreviewImages.length === files.length) {
+          setImageUrls((prev) => [...prev, ...newImageUrls]);
+          setPreviewImages((prev) => [...prev, ...newPreviewImages]);
+          setValue('images', [...(watch('images') || []), ...newImageUrls]);
           trigger('images');
         }
       };
       reader.readAsDataURL(file);
-    });
+    }
   };
 
   const removeImage = (index: number) => {
-    const updatedImages = [...previewImages];
-    updatedImages.splice(index, 1);
-    setPreviewImages(updatedImages);
-    setValue('images', updatedImages);
+    const updatedPreviewImages = [...previewImages];
+    const updatedImageUrls = [...imageUrls];
+    updatedPreviewImages.splice(index, 1);
+    updatedImageUrls.splice(index, 1);
+    setPreviewImages(updatedPreviewImages);
+    setImageUrls(updatedImageUrls);
+    setValue('images', updatedImageUrls);
     trigger('images');
   };
 
@@ -180,12 +219,10 @@ export default function NewProduct() {
     try {
       const categoryId = data.childCategory || data.parentCategory;
 
-      // Validate category_id
       if (!categoryId) {
         throw new Error('Category selection is required');
       }
 
-      // Set category_id explicitly
       setValue('category_id', categoryId);
       await trigger('category_id');
 
@@ -195,6 +232,7 @@ export default function NewProduct() {
         variationOptionIds: data.variationOptionIds?.filter((id) => id) || [],
         variantStocks: hasVariations ? variantStocks : undefined,
         stock_quantity: hasVariations ? undefined : data.stock_quantity,
+        images: imageUrls, // Send Supabase public URLs
       };
 
       const res = await fetch('http://localhost:8383/api/product/add-new-post', {
@@ -213,6 +251,7 @@ export default function NewProduct() {
       setSubmittedData(payload);
       reset();
       setPreviewImages([]);
+      setImageUrls([]);
       setVariantStocks([]);
     } catch (error: any) {
       console.error('Error submitting product:', error);
@@ -270,7 +309,7 @@ export default function NewProduct() {
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   onChange={(e) => {
                     setValue('parentCategory', e.target.value);
-                    setValue('childCategory', ''); // Reset child category
+                    setValue('childCategory', '');
                     setValue('category_id', e.target.value);
                     trigger('category_id');
                   }}
