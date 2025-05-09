@@ -17,9 +17,7 @@ type Category = {
 };
 
 export default function ManageCategories() {
-  const [categories, setCategories] = useState<Category[]>([
-    { id: uuid(), name: '', parentId: '' },
-  ]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [variations, setVariations] = useState<Variant[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'parent' | 'child' | 'variant' | null>(null);
@@ -144,13 +142,39 @@ export default function ManageCategories() {
         const variantsToAdd = variantList
           .filter((v) => v.name && v.options.some((o) => o.value))
           .map((v) => ({
-            ...v,
+            id: uuid(),
+            name: v.name,
+            options: v.options.filter((o) => o.value),
             categoryId: newChildId,
           }));
+
+        // Add variants for child category
+        for (const variant of variantsToAdd) {
+          const res = await fetch('http://localhost:8383/api/categories/add-variant', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: variant.name,
+              categoryId: newChildId,
+              options: variant.options.map((o) => o.value),
+            }),
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Failed to add variant');
+          }
+
+          const data = await res.json();
+          variant.id = data.variation.id; // Update with backend ID
+        }
+
         setVariations((prev) => [...prev, ...variantsToAdd]);
       } catch (error: any) {
-        console.error('Failed to add child category', error);
-        setSubmissionError(error.message || 'Failed to add child category');
+        console.error('Failed to add child category or variants', error);
+        setSubmissionError(error.message || 'Failed to add child category or variants');
         return;
       }
     }
@@ -160,13 +184,45 @@ export default function ManageCategories() {
         setSubmissionError('Child category selection is required');
         return;
       }
+
       const variantsToAdd = variantList
         .filter((v) => v.name && v.options.some((o) => o.value))
         .map((v) => ({
-          ...v,
+          id: uuid(),
+          name: v.name,
+          options: v.options.filter((o) => o.value),
           categoryId: currentParentId,
         }));
-      setVariations((prev) => [...prev, ...variantsToAdd]);
+
+      try {
+        for (const variant of variantsToAdd) {
+          const res = await fetch('http://localhost:8383/api/categories/add-variant', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: variant.name,
+              categoryId: currentParentId,
+              options: variant.options.map((o) => o.value),
+            }),
+          });
+
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || 'Failed to add variant');
+          }
+
+          const data = await res.json();
+          variant.id = data.variation.id; // Update with backend ID
+        }
+
+        setVariations((prev) => [...prev, ...variantsToAdd]);
+      } catch (error: any) {
+        console.error('Failed to add variants', error);
+        setSubmissionError(error.message || 'Failed to add variants');
+        return;
+      }
     }
 
     closeModal();
