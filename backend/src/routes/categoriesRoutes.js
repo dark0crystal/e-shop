@@ -349,9 +349,21 @@ router.put('/edit-variation-option/:id', async (req, res) => {
     }
   });
   // =======================================
-
+  // Delete parent category
+  router.delete('/delete-parent-category/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      await prisma.category.delete({
+        where: { id },
+      });
+      res.status(200).json({ message: 'Parent category deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting parent category:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
   // =======================================
-  
+
   // =======================================
 
 export default router;
