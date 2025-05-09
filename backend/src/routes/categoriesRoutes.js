@@ -330,6 +330,29 @@ router.put('/edit-variant/:id', async (req, res) => {
     }
   });
 // =======================================
+// Edit variation option
+router.put('/edit-variation-option/:id', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { value } = req.body;
+      if (!value) {
+        return res.status(400).json({ message: 'Value is required' });
+      }
+      const updatedOption = await prisma.variationOption.update({
+        where: { id },
+        data: { value },
+      });
+      res.status(200).json({ message: 'Variation option updated successfully', updatedOption });
+    } catch (error) {
+      console.error('Error updating variation option:', error);
+      res.status(400).json({ message: 'Internal server error', error });
+    }
+  });
+  // =======================================
+
+  // =======================================
+  
+  // =======================================
 
 export default router;
 
