@@ -3,6 +3,7 @@ import prisma from '../prismaClient.js';
 
 const router = express.Router();
 
+// Create a new product
 router.post('/add-new-post', async (req, res) => {
   try {
     const {
@@ -11,7 +12,7 @@ router.post('/add-new-post', async (req, res) => {
       brand,
       isActive = true,
       category_id,
-      images, // Array of Supabase public URLs
+      images,
       variantStocks,
       variationOptionIds,
       price,
@@ -19,12 +20,10 @@ router.post('/add-new-post', async (req, res) => {
       sku,
     } = req.body;
 
-    // Validate required fields
     if (!name || !description || !brand || !category_id) {
       return res.status(400).json({ message: 'Name, description, brand, and category_id are required' });
     }
 
-    // Validate category exists
     const category = await prisma.category.findUnique({
       where: { id: category_id },
     });
@@ -32,7 +31,6 @@ router.post('/add-new-post', async (req, res) => {
       return res.status(400).json({ message: 'Invalid category_id' });
     }
 
-    // Validate images (optional, but ensure they are valid URLs if provided)
     let imageUrls = images || [];
     if (imageUrls.length > 0) {
       imageUrls.forEach((url) => {
@@ -42,9 +40,7 @@ router.post('/add-new-post', async (req, res) => {
       });
     }
 
-    // Start a transaction to ensure data consistency
     const product = await prisma.$transaction(async (tx) => {
-      // Create the Product
       const newProduct = await tx.product.create({
         data: {
           name,
@@ -52,24 +48,20 @@ router.post('/add-new-post', async (req, res) => {
           brand,
           isActive,
           categoryId: category_id,
-          coverImage: imageUrls.length > 0 ? imageUrls[0] : '', // Use first image as cover
+          coverImage: imageUrls.length > 0 ? imageUrls[0] : '',
         },
       });
 
-      // Handle ProductItem(s)
       const productItems = [];
 
       if (variantStocks && variantStocks.length > 0) {
-        // Variations exist: create a ProductItem for each variant combination
         for (const variant of variantStocks) {
           const { optionCombination, stock } = variant;
 
-          // Validate variationOptionIds
           if (!optionCombination || !Array.isArray(optionCombination) || optionCombination.length === 0) {
             throw new Error('Invalid optionCombination for variant');
           }
 
-          // Verify all variationOptionIds exist
           const validOptions = await tx.variationOption.findMany({
             where: { id: { in: optionCombination } },
           });
@@ -77,10 +69,8 @@ router.post('/add-new-post', async (req, res) => {
             throw new Error('One or more variationOptionIds are invalid');
           }
 
-          // Generate a unique SKU for each ProductItem
           const generatedSku = `${newProduct.id}-${optionCombination.join('-')}`;
 
-          // Create ProductItem
           const productItem = await tx.productItem.create({
             data: {
               price: price || 0,
@@ -90,7 +80,6 @@ router.post('/add-new-post', async (req, res) => {
             },
           });
 
-          // Create ProductImage records for this ProductItem
           if (imageUrls.length > 0) {
             await tx.productImage.createMany({
               data: imageUrls.map((imageUrl) => ({
@@ -100,7 +89,6 @@ router.post('/add-new-post', async (req, res) => {
             });
           }
 
-          // Create ProductConfig records to link variation options
           await tx.productConfig.createMany({
             data: optionCombination.map((variationOptionId) => ({
               productItemId: productItem.id,
@@ -115,12 +103,10 @@ router.post('/add-new-post', async (req, res) => {
           });
         }
       } else {
-        // No variations: create a single ProductItem
         if (!sku) {
           return res.status(400).json({ message: 'SKU is required for products without variations' });
         }
 
-        // Check for duplicate SKU
         const existingItem = await tx.productItem.findUnique({ where: { sku } });
         if (existingItem) {
           throw new Error('SKU already exists');
@@ -135,7 +121,6 @@ router.post('/add-new-post', async (req, res) => {
           },
         });
 
-        // Create ProductImage records
         if (imageUrls.length > 0) {
           await tx.productImage.createMany({
             data: imageUrls.map((imageUrl) => ({
@@ -145,7 +130,6 @@ router.post('/add-new-post', async (req, res) => {
           });
         }
 
-        // Create ProductConfig records if variationOptionIds are provided
         if (variationOptionIds && variationOptionIds.length > 0) {
           const validOptions = await tx.variationOption.findMany({
             where: { id: { in: variationOptionIds } },
@@ -181,6 +165,96 @@ router.post('/add-new-post', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
+// Get products by category
+router.get('/by-category/:categoryId', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    if (!categoryId) {
+      return res.status(400).json({ message: 'Category ID is required' });
+    }
+
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const products = await prisma.product.findMany({
+      where: {
+        categoryId: categoryId,
+      },
+      include: {
+        productItem: {
+          take: 1,
+          include: {
+            images: true,
+          },
+        },
+      },
+    });
+
+    const formattedProducts = products.map((product) => {
+      const firstProductItem = product.productItem[0] || {};
+      const imageUrl = firstProductItem.images?.[0]?.imageUrl || product.coverImage || '';
+
+      return {
+        id: product.id,
+        name: product.name,
+        price: firstProductItem.price ? parseFloat(firstProductItem.price) : 0,
+        stock_quantity: firstProductItem.stockQuantity || 0,
+        stock_total: firstProductItem.stockQuantity || 0,
+        image_url: imageUrl,
+        active: product.isActive,
+      };
+    });
+
+    res.status(200).json(formattedProducts);
+  } catch (error) {
+    console.error('Error fetching products by category:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
+// Toggle product status
+router.patch('/toggle-status/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ message: 'Product ID is required' });
+    }
+    if (typeof isActive !== 'boolean') {
+      return res.status(400).json({ message: 'isActive must be a boolean' });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const updatedProduct = await prisma.product.update({
+      where: { id },
+      data: { isActive },
+    });
+
+    res.status(200).json({
+      message: 'Product status updated successfully',
+      product: {
+        id: updatedProduct.id,
+        isActive: updatedProduct.isActive,
+      },
+    });
+  } catch (error) {
+    console.error('Error toggling product status:', error);
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
