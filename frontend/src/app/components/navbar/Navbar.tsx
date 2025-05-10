@@ -24,14 +24,14 @@ export default async function NavBar() {
          
             <Link href="/search" >
               <div className="p-2  mx-4">
-                  <h1 className="text-[0.9rem] lg:text-[1rem] text-md text-gray-700 font-normal hover:text-blue-600">{t("search")}</h1>
+                  <h1 className="text-[0.9rem] lg:text-[1rem] text-md text-gray-700 font-normal hover:text-blue-600">tttt</h1>
                   
               </div>
             </Link>
 
             <Link href="/report-found-item" >
               <div className="p-2  mx-4">
-                  <h1 className="text-[1rem] text-gray-700 font-normal hover:text-blue-600">{t("report")}</h1>
+                  <h1 className="text-[1rem] text-gray-700 font-normal hover:text-blue-600">rrr</h1>
               </div>
             </Link>
       
