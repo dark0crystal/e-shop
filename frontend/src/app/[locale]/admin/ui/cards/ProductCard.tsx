@@ -1,11 +1,8 @@
-'use client'
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Image, { StaticImageData } from "next/image";
-import case1 from "../../../../../../public/case1.jpeg";
-import case2 from "../../../../../../public/case2.jpeg";
-import case3 from "../../../../../../public/case3.jpeg";
+import { useState, useTransition } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   id: string;
@@ -13,49 +10,47 @@ interface Product {
   price: number;
   stock_quantity: number;
   stock_total: number;
-  image_url: StaticImageData;
+  image_url: string; // Changed to string for Supabase URLs
   active: boolean;
 }
 
-export default function ProductCard() {
+async function toggleProductStatus(id: string, currentStatus: boolean) {
+  try {
+    const res = await fetch(`http://localhost:8383/api/product/toggle-status/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ isActive: !currentStatus }),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to toggle product status');
+    }
+    return true;
+  } catch (error) {
+    console.error('Error toggling product status:', error);
+    return false;
+  }
+}
+
+export default function ProductCard({ products }: { products: Product[] }) {
+  const [productList, setProductList] = useState<Product[]>(products);
+  const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "p1",
-      name: "Oversized Heritage Washed Shirt",
-      price: 64.15,
-      stock_quantity: 900,
-      stock_total: 1000,
-      image_url: case1,
-      active: true,
-    },
-    {
-      id: "p2",
-      name: "Sweatshirt With Hood",
-      price: 74.34,
-      stock_quantity: 400,
-      stock_total: 1000,
-      image_url: case2,
-      active: true,
-    },
-    {
-      id: "p3",
-      name: "Soft and Light Break",
-      price: 54.21,
-      stock_quantity: 420,
-      stock_total: 1000,
-      image_url: case3,
-      active: false,
-    },
-  ]);
-
-  const toggleStatus = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, active: !p.active } : p
-      )
-    );
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    startTransition(async () => {
+      const success = await toggleProductStatus(id, currentStatus);
+      if (success) {
+        // Optimistically update the UI
+        setProductList((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, active: !currentStatus } : p))
+        );
+      } else {
+        // Show error message
+        alert('Failed to toggle product status');
+      }
+    });
   };
 
   const handleCardClick = (id: string) => {
@@ -73,7 +68,7 @@ export default function ProductCard() {
           <div>Toggle</div>
         </div>
 
-        {products.map((product) => (
+        {productList.map((product) => (
           <div
             key={product.id}
             onClick={() => handleCardClick(product.id)}
@@ -82,7 +77,7 @@ export default function ProductCard() {
             {/* Product info */}
             <div className="col-span-2 flex items-center gap-3">
               <Image
-                src={product.image_url}
+                src={product.image_url || '/placeholder.jpg'}
                 alt={product.name}
                 width={48}
                 height={48}
@@ -106,24 +101,25 @@ export default function ProductCard() {
             <div>
               <span
                 className={`text-sm font-medium ${
-                  product.active ? "text-green-600" : "text-gray-400"
+                  product.active ? 'text-green-600' : 'text-gray-400'
                 }`}
               >
-                {product.active ? "Active" : "Inactive"}
+                {product.active ? 'Active' : 'Inactive'}
               </span>
             </div>
 
             {/* Toggle button */}
             <div onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={() => toggleStatus(product.id)}
+                onClick={() => handleToggleStatus(product.id, product.active)}
+                disabled={isPending}
                 className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${
-                  product.active ? "bg-green-500" : "bg-gray-300"
-                }`}
+                  product.active ? 'bg-green-500' : 'bg-gray-300'
+                } ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <span
                   className={`absolute left-0 top-0.5 h-4 w-4 bg-white rounded-full shadow transform transition-transform duration-300 ${
-                    product.active ? "translate-x-5" : "translate-x-0.5"
+                    product.active ? 'translate-x-5' : 'translate-x-0.5'
                   }`}
                 />
               </button>
