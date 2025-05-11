@@ -9,26 +9,40 @@ interface Category {
 
 async function fetchParentCategories(): Promise<Category[]> {
   try {
+    console.log('Fetching parent categories from /api/categories/get-parent-categories');
     const res = await fetch('http://localhost:8383/api/categories/get-parent-categories', {
       cache: 'no-store',
     });
     if (!res.ok) {
-      throw new Error('Failed to fetch parent categories');
+      throw new Error(`Failed to fetch parent categories: ${res.status} ${res.statusText}`);
     }
-    return await res.json();
+    const data = await res.json();
+    console.log('Parent categories fetched:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching parent categories:', error);
-    return [];
+    throw error; // Rethrow to handle in component
   }
 }
 
 export default async function ProductCategories() {
-  const categories = await fetchParentCategories();
+  let categories: Category[] = [];
+  let error: string | null = null;
+
+  try {
+    categories = await fetchParentCategories();
+  } catch (err) {
+    error = err instanceof Error ? err.message : 'Unknown error occurred';
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Product Categories</h1>
-      {categories.length > 0 ? (
+      {error ? (
+        <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+          Error: {error}
+        </div>
+      ) : categories.length > 0 ? (
         <ProductCategoriesCard categories={categories} />
       ) : (
         <p className="text-gray-500">No parent categories found.</p>
