@@ -49,19 +49,22 @@ router.get('/all', async(req, res)=>{
 //====================================================
 // get the parent categories only 
 
-router.get('/get-parent-categories' , async(req ,res)=>{
-  try{  
-    const parentCategories = await prisma.categories.findMany({
-        where:{
-          parentCategoryId :null
-        }
-    })
-    console.log(parentCategories)
-    res.status(200).json(parentCategories)
-  }catch(error){
-    res.status(404).json({message:"can't get the parent categoreis"});
+// Get parent categories
+router.get('/get-parent-categories', async (req, res) => {
+  try {
+    console.log('Fetching parent categories...');
+    const parentCategories = await prisma.category.findMany({
+      where: {
+        parentCategoryId: null,
+      },
+    });
+    console.log('Parent categories fetched:', parentCategories);
+    res.status(200).json(parentCategories);
+  } catch (error) {
+    console.error('Error fetching parent categories:', error);
+    res.status(500).json({ message: "Can't get the parent categories", error: error.message });
   }
-})
+});
 //====================================================
 // get all the parent and child categories , also the varuents and varients options
 // Get all categories, subcategories, variations, and options
