@@ -52,7 +52,7 @@ export default function NewProduct() {
     watch,
     trigger,
   } = useForm<ItemFormFields>({
-    resolver: zodResolver(itemSchema),
+    // resolver: zodResolver(itemSchema),
     mode: 'onBlur',
     defaultValues: {
       is_active: true,
