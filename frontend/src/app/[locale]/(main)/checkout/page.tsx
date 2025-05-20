@@ -1,4 +1,5 @@
-'use client'
+'use client';
+
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,101 +27,102 @@ export default function Checkout() {
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <h2 className="text-2xl font-bold mb-4">Checkout</h2>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-8 space-y-6">
+        <h2 className="text-3xl font-bold text-center text-gray-800">Checkout</h2>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Name */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              {...register('name')}
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your name"
+            />
+            {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+          </div>
 
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium">Name</label>
-          <input
-            {...register('name')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your name"
-          />
-          {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
-        </div>
+          {/* Email */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              {...register('email')}
+              type="email"
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your email"
+            />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
+          </div>
 
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium">Email</label>
-          <input
-            {...register('email')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your email"
-            type="email"
-          />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-        </div>
+          {/* Phone */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <input
+              {...register('phone')}
+              type="tel"
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your phone number"
+            />
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+          </div>
 
-        {/* Phone */}
-        <div>
-          <label className="block text-sm font-medium">Phone</label>
-          <input
-            {...register('phone')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your phone number"
-            type="tel"
-          />
-          {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
-        </div>
+          {/* Country */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+            <input
+              {...register('country')}
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your country"
+            />
+            {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country.message}</p>}
+          </div>
 
-        {/* Country */}
-        <div>
-          <label className="block text-sm font-medium">Country</label>
-          <input
-            {...register('country')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your country"
-          />
-          {errors.country && <p className="text-red-500 text-sm">{errors.country.message}</p>}
-        </div>
+          {/* City */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+            <input
+              {...register('city')}
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your city"
+            />
+            {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city.message}</p>}
+          </div>
 
-        {/* City */}
-        <div>
-          <label className="block text-sm font-medium">City</label>
-          <input
-            {...register('city')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your city"
-          />
-          {errors.city && <p className="text-red-500 text-sm">{errors.city.message}</p>}
-        </div>
+          {/* Address */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <textarea
+              {...register('address')}
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+              placeholder="Enter your full address"
+              rows={3}
+            />
+            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address.message}</p>}
+          </div>
 
-        {/* Address */}
-        <div>
-          <label className="block text-sm font-medium">Address</label>
-          <textarea
-            {...register('address')}
-            className="border p-2 w-full rounded"
-            placeholder="Enter your full address"
-            rows={3}
-          />
-          {errors.address && <p className="text-red-500 text-sm">{errors.address.message}</p>}
-        </div>
+          {/* Payment Method */}
+          <div className="relative">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+            <select
+              {...register('paymentMethod')}
+              className="w-full px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-200"
+            >
+              <option value="">Select a payment method</option>
+              <option value="card">Debit/Credit Card</option>
+              <option value="cod">Cash on Delivery</option>
+            </select>
+            {errors.paymentMethod && <p className="text-red-500 text-xs mt-1">{errors.paymentMethod.message}</p>}
+          </div>
 
-        {/* Payment Method */}
-        <div>
-          <label className="block text-sm font-medium">Payment Method</label>
-          <select
-            {...register('paymentMethod')}
-            className="border p-2 w-full rounded"
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-all duration-300 shadow-md hover:shadow-lg"
           >
-            <option value="">Select a payment method</option>
-            <option value="card">Debit/Credit Card</option>
-            <option value="cod">Cash on Delivery</option>
-          </select>
-          {errors.paymentMethod && <p className="text-red-500 text-sm">{errors.paymentMethod.message}</p>}
-        </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="bg-teal-500 text-white p-2 rounded w-full hover:bg-teal-600"
-        >
-          Pay Now
-        </button>
-      </form>
+            Pay Now
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
