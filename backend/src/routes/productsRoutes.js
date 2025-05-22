@@ -259,4 +259,90 @@ router.patch('/toggle-status/:id', async (req, res) => {
   }
 });
 
+
+// =============
+
+// Updated /by-slug/:slug endpoint
+router.get('/by-slug/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    console.log(slug)
+
+    if (!slug) {
+      return res.status(400).json({ message: 'Slug is required' });
+    }
+
+    // Step 1: Fetch the parent category by slug
+    const parentCategory = await prisma.category.findUnique({
+      where: { slug },
+      include: {
+        subcategories: {
+          include: {
+            subcategories: true, // Recursive inclusion for nested subcategories
+          },
+        },
+      },
+    });
+
+    if (!parentCategory) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Step 2: Recursively collect all subcategory IDs
+    const collectSubcategoryIds = (category) => {
+      const ids = [category.id];
+      if (category.subcategories && category.subcategories.length > 0) {
+        category.subcategories.forEach((subcategory) => {
+          ids.push(...collectSubcategoryIds(subcategory));
+        });
+      }
+      return ids;
+    };
+
+    const categoryIds = collectSubcategoryIds(parentCategory);
+
+    // Step 3: Fetch products from the parent category and all subcategories
+    const products = await prisma.product.findMany({
+      where: {
+        categoryId: { in: categoryIds },
+        isActive: true, // Optionally filter for active products
+      },
+      include: {
+        productItem: {
+          take: 1,
+          include: {
+            images: true,
+          },
+        },
+      },
+    });
+
+    // Step 4: Format the products
+    const formattedProducts = products.map((product) => {
+      const firstProductItem = product.productItem[0] || {};
+      const imageUrl = firstProductItem.images?.[0]?.imageUrl || product.coverImage || '';
+
+      return {
+        id: product.id,
+        name: product.name,
+        price: firstProductItem.price ? parseFloat(firstProductItem.price) : 0,
+        stock_quantity: firstProductItem.stockQuantity || 0,
+        image_url: imageUrl,
+        active: product.isActive,
+        brand: product.brand, // Include brand in response
+      };
+    });
+
+    // Return both products and category name
+    res.status(200).json({
+      products: formattedProducts,
+      categoryName: parentCategory.name,
+      categoryId: parentCategory.id
+    });
+  } catch (error) {
+    console.error('Error fetching products by slug:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
+});
+
 export default router;
