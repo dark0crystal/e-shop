@@ -266,7 +266,7 @@ router.patch('/toggle-status/:id', async (req, res) => {
 router.get('/by-slug/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
-    console.log(slug)
+    console.log("from backend",slug)
 
     if (!slug) {
       return res.status(400).json({ message: 'Slug is required' });
