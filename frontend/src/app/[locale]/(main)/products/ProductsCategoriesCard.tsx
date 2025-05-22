@@ -27,7 +27,7 @@ export default function ProductCategoriesCard({ categories }: ProductCategoriesC
             <h2 className="text-xl font-semibold text-gray-800 mb-2">{category.name}</h2>
             <p className="text-gray-600 text-sm mb-4 line-clamp-3">{category.description}</p>
             <Link
-              href={`/admin/products?categoryId=${category.id}`}
+              href={`/products?categoryId=${category.id}`}
               locale={locale}
               className="inline-block bg-blue-500 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors duration-200"
             >
