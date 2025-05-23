@@ -39,7 +39,7 @@ export default async function Page({
     console.log(`Attempting fetch for slug: ${slug} at ${new Date().toISOString()} from Next.js server`);
     const res = await fetch(`http://localhost:8383/api/product/by-slug/${slug}`, {
       cache: 'no-store',
-      method: 'GET', // Explicitly set method
+      method: 'GET', 
       headers: {
         'Content-Type': 'application/json',
       },
