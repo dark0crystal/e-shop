@@ -3,6 +3,9 @@ import prisma from '../prismaClient.js';
 
 const router = express.Router();
 
+
+
+// =========================================
 // Create a new product
 router.post('/add-new-post', async (req, res) => {
   try {
@@ -169,6 +172,8 @@ router.post('/add-new-post', async (req, res) => {
   }
 });
 
+// =========================================
+
 // Get products by category
 router.get('/by-category/:categoryId', async (req, res) => {
   try {
@@ -220,6 +225,8 @@ router.get('/by-category/:categoryId', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+// =========================================
 
 // Toggle product status
 router.patch('/toggle-status/:id', async (req, res) => {
@@ -344,5 +351,7 @@ router.get('/by-slug/:slug', async (req, res) => {
     res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
+
+// =========================================
 
 export default router;
