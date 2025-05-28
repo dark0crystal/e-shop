@@ -23,17 +23,21 @@ export default function CheckOutOrders() {
       try {
         // Check if user is logged in by fetching session with JWT
         const token = localStorage.getItem('token');
+        console.log("outside---not token")
         if (token) {
+           console.log("inside ----not token")
           // Logged-in user: Fetch cart from backend
-          const response = await fetch('http://localhost:8383/api/cart', {
+          const response = await fetch('http://localhost:8383/api/cart/', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
           });
+          console.log(token);
 
           if (!response.ok) {
             if (response.status === 401) {
+              console.log('not')
               localStorage.removeItem('token'); // Clear invalid token
               throw new Error('Session expired. Please log in again.');
             }
@@ -41,6 +45,7 @@ export default function CheckOutOrders() {
           }
 
           const cartData = await response.json();
+          console.log("cartdata :",cartData)
           setCart(cartData);
         } else {
           // Guest user: Fetch cart from cookies
