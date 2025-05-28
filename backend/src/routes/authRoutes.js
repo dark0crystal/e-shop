@@ -17,14 +17,7 @@ const transporter = nodemailer.createTransport({
 });
 
 
-// Helper function to generate JWT token
-// const generateToken = (userId, isAdmin) => {
-//   return jwt.sign(
-//     { userId, isAdmin },
-//     process.env.JWT_SECRET,
-//     { expiresIn: '24h' }
-//   );
-// };
+
 
 router.post("/send-otp", async (req, res) => {
   try {
