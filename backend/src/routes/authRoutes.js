@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import prisma from '../prismaClient.js';
+import prisma from "../prismaClient.js";
 import { decodeToken, generateAuthToken } from '../service/tokenService.js';
 
 const router = express.Router();
@@ -82,6 +82,12 @@ router.post("/verify-otp", async (req, res) => {
     // Sync cart items from frontend (if provided)
     if (cartItems && Array.isArray(cartItems)) {
       for (const item of cartItems) {
+        // Validate productItemId
+        if (!item.productItemId) {
+          console.warn(`Skipping invalid cart item: productItemId is undefined for item ${JSON.stringify(item)}`);
+          continue; // Skip invalid items
+        }
+
         const existingItem = await prisma.cartItem.findFirst({
           where: {
             userId: user.id,
@@ -100,6 +106,7 @@ router.post("/verify-otp", async (req, res) => {
               userId: user.id,
               productItemId: item.productItemId,
               quantity: item.quantity,
+              user: { connect: { id: user.id } }, // Explicitly connect the user
             },
           });
         }
