@@ -58,35 +58,70 @@ export default function ProductCard({
   const [added, setAdded] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const productLink = customLink || `/product/${id}`;
   const isOutOfStock = stock_quantity === 0;
   const discountPercentage = discount || (originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
 
     if (isOutOfStock) return;
 
-    if (onAddToCart) {
-      onAddToCart({ id, name, price, image, quantity: 1 });
-    } else {
-      // Default cart logic
-      const cart = JSON.parse(Cookies.get('cart') || '[]');
-      const existingItem = cart.find((item: any) => item.id === id);
+    const product = { id, name, price, image, quantity: 1 };
+    setError(null);
 
-      if (!existingItem) {
-        cart.push({ id, name, price, image, quantity: 1 });
+    // Check if user is logged in by checking for JWT token
+    const token = localStorage.getItem('token');
+
+    if (token) {
+      // Logged-in user: Sync to database
+      try {
+        const response = await fetch('http://localhost:8383/api/cart/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            productItemId: id, // Assuming 'id' is the productItemId
+            quantity: 1,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to add item to cart in database');
+        }
+
+        setAdded(true);
+        setTimeout(() => setAdded(false), 2000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error adding to cart');
+        setTimeout(() => setError(null), 3000);
+      }
+    } else {
+      // Guest user: Use cookies
+      if (onAddToCart) {
+        onAddToCart(product);
       } else {
-        existingItem.quantity += 1;
+        const cart = JSON.parse(Cookies.get('cart') || '[]');
+        const existingItem = cart.find((item: any) => item.id === id);
+
+        if (!existingItem) {
+          cart.push(product);
+        } else {
+          existingItem.quantity += 1;
+        }
+
+        Cookies.set('cart', JSON.stringify(cart), { expires: 7 });
       }
 
-      Cookies.set('cart', JSON.stringify(cart), { expires: 7 });
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
     }
-
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
@@ -283,6 +318,13 @@ export default function ProductCard({
           </div>
         </div>
       </Link>
+
+      {/* Error Message */}
+      {error && (
+        <div className="px-4 pb-2">
+          <p className="text-red-500 text-sm text-center">{error}</p>
+        </div>
+      )}
 
       {/* Add to Cart Button */}
       <div className="px-4 pb-4">
