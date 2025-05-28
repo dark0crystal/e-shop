@@ -1,13 +1,13 @@
 import express from "express";
 import prisma from '../prismaClient.js';
-import { verifyToken } from './auth.js';
+import { verifyToken } from "./authRoutes.js";
 
 const router = express.Router();
 
 
 
 // Get cart for the logged-in user (using JWT)
-router.get('/cart', verifyToken, async (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
 
