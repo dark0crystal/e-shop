@@ -5,7 +5,7 @@ export default function CheckOutForm(){
 
   return(
     <div>
-      Checkout
+      Checkout Form
     </div>
   )
 
