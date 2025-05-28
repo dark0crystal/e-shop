@@ -48,7 +48,9 @@ export default function LoginPage() {
       try {
         // Get cart from cookies to sync with database
         const cartCookie = Cookies.get('cart') || '[]';
-        const cartItems = JSON.parse(cartCookie);
+        const cartItems = JSON.parse(cartCookie).filter((item: any) => item.productItemId); // Filter out invalid items
+
+        console.log('Cart Items being sent:', cartItems); // Debug log
 
         const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
           method: "POST",
