@@ -88,7 +88,7 @@ router.post("/verify-otp", async (req, res) => {
           continue; // Skip invalid items
         }
 
-        const existingItem = await prisma.cartItem.findFirst({
+        const existingItem = await prisma.CartItem.findFirst({
           where: {
             userId: user.id,
             productItemId: item.productItemId,
@@ -101,7 +101,8 @@ router.post("/verify-otp", async (req, res) => {
             data: { quantity: existingItem.quantity + item.quantity },
           });
         } else {
-          await prisma.cartItem.create({
+          console.log("create cart")
+          await prisma.CartItem.create({
             data: {
               userId: user.id,
               productItemId: item.productItemId,
