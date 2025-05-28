@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import productsRoutes from './routes/productsRoutes.js'
 import categoriesRoutes from './routes/categoriesRoutes.js'
+import cartRoutes from './routes/cartRoutes.js'
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use(express.json()); // To parse JSON request bodies
 app.use('/api/auth', authRoutes); 
 app.use('/api/product', productsRoutes);
 app.use('/api/categories', categoriesRoutes);
+app.use('/api/cart', cartRoutes);
 
 // Start server
 app.listen(8383, () => {
