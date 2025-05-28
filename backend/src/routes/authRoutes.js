@@ -47,29 +47,30 @@ router.post("/send-otp", async (req, res) => {
 
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { email, otp, cartItems } = req.body;
+  const { email, otp, cartItems } = req.body;
 
-    const record = await prisma.otpRequest.findFirst({
-      where: { email },
-      orderBy: { createdAt: "desc" },
-    });
+  const record = await prisma.otpRequest.findFirst({
+    where: { email },
+    orderBy: { createdAt: "desc" },
+  });
 
-    if (!record || record.expiresAt < new Date()) {
-      return res.status(400).json({ message: "OTP expired or not found." });
-    }
+  if (!record || record.expiresAt < new Date()) {
+    return res.status(400).json({ message: "OTP expired or not found." });
+  }
 
-    const valid = await bcrypt.compare(otp, record.otpHash);
+  const valid = await bcrypt.compare(otp, record.otpHash);
+  if (!valid) {
+    return res.status(401).json({ message: "Invalid OTP." });
+  }
 
-    if (!valid) {
-      return res.status(401).json({ message: "Invalid OTP." });
-    }
-
-    let user = await prisma.user.findUnique({
+  // Run in a transaction
+  const result = await prisma.$transaction(async (tx) => {
+    let user = await tx.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      user = await prisma.user.create({
+      user = await tx.user.create({
         data: {
           email,
           name: email.split('@')[0],
@@ -79,16 +80,24 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    // Sync cart items from frontend (if provided)
+    // Sync cart items
     if (cartItems && Array.isArray(cartItems)) {
       for (const item of cartItems) {
-        // Validate productItemId
-        if (!item.productItemId) {
-          console.warn(`Skipping invalid cart item: productItemId is undefined for item ${JSON.stringify(item)}`);
-          continue; // Skip invalid items
+        if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+          console.warn(`Skipping invalid cart item: ${JSON.stringify(item)}`);
+          continue;
         }
 
-        const existingItem = await prisma.CartItem.findFirst({
+        const productItem = await tx.productItem.findUnique({
+          where: { id: item.productItemId },
+        });
+
+        if (!productItem) {
+          console.warn(`ProductItem not found for ID: ${item.productItemId}`);
+          continue;
+        }
+
+        const existingItem = await tx.cartItem.findFirst({
           where: {
             userId: user.id,
             productItemId: item.productItemId,
@@ -96,44 +105,46 @@ router.post("/verify-otp", async (req, res) => {
         });
 
         if (existingItem) {
-          await prisma.cartItem.update({
+          await tx.cartItem.update({
             where: { id: existingItem.id },
             data: { quantity: existingItem.quantity + item.quantity },
           });
         } else {
-          console.log("create cart")
-          await prisma.CartItem.create({
+          console.log("Creating cart item");
+          await tx.cartItem.create({
             data: {
               userId: user.id,
               productItemId: item.productItemId,
               quantity: item.quantity,
-              user: { connect: { id: user.id } }, // Explicitly connect the user
             },
           });
         }
       }
     }
 
-    const token = generateAuthToken(user.id, user.isAdmin);
-
-    await prisma.otpRequest.delete({
+    await tx.otpRequest.delete({
       where: { id: record.id },
     });
 
-    return res.status(200).json({
-      message: "Authenticated successfully.",
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        isAdmin: user.isAdmin,
-      },
-    });
-  } catch (error) {
-    console.error("Error verifying OTP:", error);
-    return res.status(500).json({ message: "Error verifying OTP." });
-  }
+    return user;
+  });
+
+  const token = generateAuthToken(result.id, result.isAdmin);
+
+  return res.status(200).json({
+    message: "Authenticated successfully.",
+    token,
+    user: {
+      id: result.id,
+      email: result.email,
+      name: result.name,
+      isAdmin: result.isAdmin,
+    },
+  });
+} catch (error) {
+  console.error("Error in verify-otp:", error);
+  return res.status(500).json({ message: "Error verifying OTP.", error: error.message });
+}
 });
 
 // Middleware to verify JWT token
