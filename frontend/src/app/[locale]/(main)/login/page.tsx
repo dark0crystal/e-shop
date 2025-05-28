@@ -27,54 +27,62 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    setError(null);
+  setError(null);
 
-    if (!submitted) {
-      try {
-        const res = await fetch("http://localhost:8383/api/auth/send-otp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: data.email }),
-        });
+  if (!submitted) {
+    try {
+      const res = await fetch("http://localhost:8383/api/auth/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: data.email }),
+      });
 
-        if (!res.ok) throw new Error("Failed to send OTP.");
-        setSubmitted(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred while sending OTP");
-      }
-    } else {
-      try {
-        // Get cart from cookies to sync with database
-        const cartCookie = Cookies.get('cart') || '[]';
-        const cartItems = JSON.parse(cartCookie).filter((item: any) => item.productItemId); // Filter out invalid items
-
-        console.log('Cart Items being sent:', cartItems); // Debug log
-
-        const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: data.email, otp: data.otp, cartItems }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Invalid or expired OTP.");
-        }
-
-        const { token } = await res.json();
-        localStorage.setItem('token', token); // Store JWT in localStorage
-        Cookies.remove('cart'); // Clear guest cart after sync
-
-        router.push('/checkout'); // Redirect to checkout
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred during login");
-      }
+      if (!res.ok) throw new Error("Failed to send OTP.");
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred while sending OTP");
     }
-  };
+  } else {
+    try {
+      // Get cart from cookies to sync with database
+      const cartCookie = Cookies.get('cart') || '[]';
+      const rawCartItems = JSON.parse(cartCookie);
+      // Validate cart items
+      const cartItems = rawCartItems.filter((item: any) => {
+        if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+          console.warn(`Invalid cart item filtered out: ${JSON.stringify(item)}`);
+          return false;
+        }
+        return true;
+      });
+
+      console.log('Cart Items being sent:', cartItems);
+
+      const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: data.email, otp: data.otp, cartItems }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Invalid or expired OTP.");
+      }
+
+      const { token } = await res.json();
+      localStorage.setItem('token', token);
+      Cookies.remove('cart');
+
+      router.push('/checkout');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during login");
+    }
+  }
+};
 
   return (
     <div className="max-w-md mx-auto py-10 px-4">
