@@ -1,9 +1,11 @@
-"use client";
+'use client';
 
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -13,7 +15,9 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -23,36 +27,57 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    setError(null);
+
     if (!submitted) {
-      console.log(data)
-      const res = await fetch("http://localhost:8383/api/auth/send-otp", {
-        method: "POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
-        body: JSON.stringify({ email: data.email }),
-      });
+      try {
+        const res = await fetch("http://localhost:8383/api/auth/send-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: data.email }),
+        });
 
-      if (res.ok) setSubmitted(true);
-      else alert("Failed to send OTP.");
+        if (!res.ok) throw new Error("Failed to send OTP.");
+        setSubmitted(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred while sending OTP");
+      }
     } else {
-      const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
-        method: "POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
-        body: JSON.stringify({ email: data.email, otp: data.otp }),
-      });
+      try {
+        // Get cart from cookies to sync with database
+        const cartCookie = Cookies.get('cart') || '[]';
+        const cartItems = JSON.parse(cartCookie);
 
-      if (res.ok) alert("Logged in!");
-      else alert("Invalid or expired OTP.");
+        const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: data.email, otp: data.otp, cartItems }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Invalid or expired OTP.");
+        }
+
+        const { token } = await res.json();
+        localStorage.setItem('token', token); // Store JWT in localStorage
+        Cookies.remove('cart'); // Clear guest cart after sync
+
+        router.push('/checkout'); // Redirect to checkout
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred during login");
+      }
     }
   };
 
   return (
     <div className="max-w-md mx-auto py-10 px-4">
       <h1 className="text-2xl font-bold mb-4">Login via Email</h1>
-
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="block mb-1 text-sm font-medium">Email</label>
