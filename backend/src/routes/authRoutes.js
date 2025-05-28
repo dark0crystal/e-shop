@@ -1,9 +1,8 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
-import prisma from '../prismaClient.js'
-import { decodeToken , generateAuthToken } from '../service/tokenService.js';
-
+import prisma from '../prismaClient.js';
+import { decodeToken, generateAuthToken } from '../service/tokenService.js';
 
 const router = express.Router();
 
@@ -15,9 +14,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
-
-
 
 router.post("/send-otp", async (req, res) => {
   try {
@@ -51,7 +47,7 @@ router.post("/send-otp", async (req, res) => {
 
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, cartItems } = req.body;
 
     const record = await prisma.otpRequest.findFirst({
       where: { email },
@@ -68,7 +64,6 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(401).json({ message: "Invalid OTP." });
     }
 
-    // Find or create user
     let user = await prisma.user.findUnique({
       where: { email },
     });
@@ -77,17 +72,42 @@ router.post("/verify-otp", async (req, res) => {
       user = await prisma.user.create({
         data: {
           email,
-          name: email.split('@')[0], // Default name from email
-          passwordHash: await bcrypt.hash(Math.random().toString(36).slice(-8), 10), // Random password
+          name: email.split('@')[0],
+          passwordHash: await bcrypt.hash(Math.random().toString(36).slice(-8), 10),
           isAdmin: false,
         },
       });
     }
 
-    // Generate JWT token
+    // Sync cart items from frontend (if provided)
+    if (cartItems && Array.isArray(cartItems)) {
+      for (const item of cartItems) {
+        const existingItem = await prisma.cartItem.findFirst({
+          where: {
+            userId: user.id,
+            productItemId: item.productItemId,
+          },
+        });
+
+        if (existingItem) {
+          await prisma.cartItem.update({
+            where: { id: existingItem.id },
+            data: { quantity: existingItem.quantity + item.quantity },
+          });
+        } else {
+          await prisma.cartItem.create({
+            data: {
+              userId: user.id,
+              productItemId: item.productItemId,
+              quantity: item.quantity,
+            },
+          });
+        }
+      }
+    }
+
     const token = generateAuthToken(user.id, user.isAdmin);
 
-    // Clean up OTP record
     await prisma.otpRequest.delete({
       where: { id: record.id },
     });
@@ -109,29 +129,38 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 // Middleware to verify JWT token
-// export const verifyToken = (req, res, next) => {
-//   const token = req.headers.authorization?.split(' ')[1];
+export const verifyToken = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
 
-//   if (!token) {
-//     return res.status(401).json({ message: "No token provided." });
-//   }
+  if (!token) {
+    return res.status(401).json({ message: "No token provided." });
+  }
 
-//   try {
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     req.user = decoded;
-//     next();
-//   } catch (error) {
-//     return res.status(401).json({ message: "Invalid token." });
-//   }
-// };
+  try {
+    const decoded = decodeToken(token);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: "Invalid token." });
+  }
+};
 
 // Middleware to check admin status
-// export const isAdmin = (req, res, next) => {
-//   if (!req.user.isAdmin) {
-//     return res.status(403).json({ message: "Access denied. Admin privileges required." });
-//   }
-//   next();
-// };
+export const isAdmin = (req, res, next) => {
+  if (!req.user.isAdmin) {
+    return res.status(403).json({ message: "Access denied. Admin privileges required." });
+  }
+  next();
+};
+
+// Endpoint to check session (JWT-based)
+router.get("/session", verifyToken, (req, res) => {
+  return res.status(200).json({
+    user: {
+      id: req.user.userId,
+      isAdmin: req.user.isAdmin,
+    },
+  });
+});
 
 export default router;
-  //in this code what does that mean :// Configure your transporter
