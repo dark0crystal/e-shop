@@ -27,62 +27,97 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-  setError(null);
+    setError(null);
 
-  if (!submitted) {
-    try {
-      const res = await fetch("http://localhost:8383/api/auth/send-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: data.email }),
-      });
+    if (!submitted) {
+      try {
+        const res = await fetch("http://localhost:8383/api/auth/send-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: data.email }),
+        });
 
-      if (!res.ok) throw new Error("Failed to send OTP.");
-      setSubmitted(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred while sending OTP");
-    }
-  } else {
-    try {
-      // Get cart from cookies to sync with database
-      const cartCookie = Cookies.get('cart') || '[]';
-      const rawCartItems = JSON.parse(cartCookie);
-      // Validate cart items
-      const cartItems = rawCartItems.filter((item: any) => {
-        if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
-          console.warn(`Invalid cart item filtered out: ${JSON.stringify(item)}`);
-          return false;
-        }
-        return true;
-      });
-
-      console.log('Cart Items being sent:', cartItems);
-
-      const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: data.email, otp: data.otp, cartItems }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Invalid or expired OTP.");
+        if (!res.ok) throw new Error("Failed to send OTP.");
+        setSubmitted(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred while sending OTP");
       }
+    } else {
+      try {
+        const requestBody = { email: data.email, otp: data.otp };
+        console.log('Request body being sent:', requestBody);
 
-      const { token } = await res.json();
-      localStorage.setItem('token', token);
-      Cookies.remove('cart');
+        const res = await fetch("http://localhost:8383/api/auth/verify-otp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Invalid or expired OTP.");
+        }
 
-      router.push('/checkout');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred during login");
+        const responseData = await res.json();
+        const { token } = responseData;
+        
+        if (!token) {
+          throw new Error("No token received from server");
+        }
+
+        localStorage.setItem('token', token);
+
+        // Get cart from cookies to sync with database
+        const cartCookie = Cookies.get('cart');
+        console.log('Raw cart cookie:', cartCookie);
+        
+        if (cartCookie) {
+          const rawCartItems = JSON.parse(cartCookie);
+          console.log("Parsed cart items:", rawCartItems);
+          
+          // Validate cart items
+          const cartItems = rawCartItems.filter((item: any) => {
+            if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+              console.warn(`Invalid cart item filtered out: ${JSON.stringify(item)}`);
+              return false;
+            }
+            return true;
+          });
+
+          if (cartItems.length > 0) {
+            console.log('Syncing cart items:', cartItems);
+            
+            // Sync cart items to database
+            const syncRes = await fetch('http://localhost:8383/api/cart/sync-guest-cart', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ cartItems }),
+            });
+
+            if (!syncRes.ok) {
+              console.error('Failed to sync cart items');
+            } else {
+              console.log('Cart items synced successfully');
+            }
+          }
+        }
+
+        // Clear cart cookie after successful sync
+        Cookies.remove('cart');
+
+        router.push('/checkout');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An error occurred during login");
+      }
     }
-  }
-};
+  };
 
   return (
     <div className="max-w-md mx-auto py-10 px-4">
