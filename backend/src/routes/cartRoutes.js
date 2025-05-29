@@ -102,108 +102,70 @@ router.post('/sync-guest-cart', verifyToken, async (req, res) => {
     const { cartItems } = req.body;
     const userId = req.user.userId;
 
-    console.log('Syncing guest cart items:', cartItems);
-
     if (!cartItems || !Array.isArray(cartItems)) {
       return res.status(400).json({ message: 'Invalid cart items data' });
     }
 
-    // Process each cart item in a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      const syncedItems = [];
-
-      for (const item of cartItems) {
-        try {
-          if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
-            console.warn(`Skipping invalid cart item: ${JSON.stringify(item)}`);
-            continue;
-          }
-
-          // Get product item with its product details
-          const productItem = await tx.productItem.findUnique({
-            where: { id: item.productItemId },
-            include: {
-              product: true,
-              images: true
-            }
-          });
-
-          if (!productItem) {
-            console.warn(`ProductItem not found for ID: ${item.productItemId}`);
-            continue;
-          }
-
-          // Check stock availability
-          if (productItem.stockQuantity < item.quantity) {
-            console.warn(`Insufficient stock for product ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${item.quantity}`);
-            continue;
-          }
-
-          // Check for existing cart item
-          const existingItem = await tx.cartItem.findFirst({
-            where: {
-              userId,
-              productItemId: item.productItemId,
-            },
-          });
-
-          if (existingItem) {
-            // Update existing item with new quantity
-            const newQuantity = existingItem.quantity + item.quantity;
-            if (productItem.stockQuantity < newQuantity) {
-              console.warn(`Insufficient stock for updating cart item ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${newQuantity}`);
-              continue;
-            }
-            
-            const updatedItem = await tx.cartItem.update({
-              where: { id: existingItem.id },
-              data: { 
-                quantity: newQuantity,
-                updatedAt: new Date()
-              },
-              include: {
-                productItem: {
-                  include: {
-                    product: true,
-                    images: true
-                  }
-                }
-              }
-            });
-            syncedItems.push(updatedItem);
-          } else {
-            // Create new cart item
-            const newItem = await tx.cartItem.create({
-              data: {
-                userId,
-                productItemId: item.productItemId,
-                quantity: item.quantity,
-                createdAt: new Date()
-              },
-              include: {
-                productItem: {
-                  include: {
-                    product: true,
-                    images: true
-                  }
-                }
-              }
-            });
-            syncedItems.push(newItem);
-          }
-        } catch (itemError) {
-          console.error(`Error processing cart item ${item.productItemId}:`, itemError);
-          // Continue with next item instead of failing the entire sync
-          continue;
-        }
+    const syncedItems = [];
+    
+    for (const item of cartItems) {
+      if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+        continue;
       }
 
-      return syncedItems;
-    });
+      const productItem = await prisma.productItem.findUnique({
+        where: { id: item.productItemId },
+        include: { product: true, images: true }
+      });
+
+      if (!productItem || productItem.stockQuantity < item.quantity) {
+        continue;
+      }
+
+      const existingItem = await prisma.cartItem.findFirst({
+        where: { userId, productItemId: item.productItemId }
+      });
+
+      let processedItem;
+      if (existingItem) {
+        const newQuantity = existingItem.quantity + item.quantity;
+        if (productItem.stockQuantity < newQuantity) {
+          continue;
+        }
+        
+        processedItem = await prisma.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: newQuantity },
+          include: {
+            productItem: {
+              include: { product: true, images: true }
+            }
+          }
+        });
+      } else {
+        processedItem = await prisma.cartItem.create({
+          data: {
+            userId,
+            productItemId: item.productItemId,
+            quantity: item.quantity,
+            createdAt: new Date()
+          },
+          include: {
+            productItem: {
+              include: { product: true, images: true }
+            }
+          }
+        });
+      }
+      
+      if (processedItem) {
+        syncedItems.push(processedItem);
+      }
+    }
 
     return res.status(200).json({ 
       message: 'Cart items synced successfully',
-      syncedItems: result 
+      syncedItems 
     });
   } catch (error) {
     console.error('Error syncing guest cart:', error);
