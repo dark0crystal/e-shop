@@ -12,10 +12,6 @@ interface FormData {
   region: string;
   postalCode: string;
   country: string;
-  paymentMethod: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
   email: string;
   otp: string;
 }
@@ -30,15 +26,12 @@ export default function CheckOutForm() {
     region: '',
     postalCode: '',
     country: '',
-    paymentMethod: 'credit_card',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
     email: '',
     otp: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'details' | 'otp'>('details');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -62,80 +55,81 @@ export default function CheckOutForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (step === 'details') {
-      if (!formData.firstName || !formData.lastName || !formData.addressLine || !formData.city || !formData.region || !formData.postalCode || !formData.country) {
-        setError('All shipping details are required.');
-        return;
-      }
-
-      if (formData.paymentMethod === 'credit_card' && (!formData.cardNumber || !formData.expiryDate || !formData.cvv)) {
-        setError('All payment details are required for credit card.');
-        return;
-      }
-
-      if (!formData.email) {
-        setError('Email is required for authentication.');
-        return;
-      }
-
-      await handleSendOtp();
-      return;
-    }
+    setIsProcessing(true);
 
     try {
+      if (step === 'details') {
+        if (!formData.firstName || !formData.lastName || !formData.addressLine || 
+            !formData.city || !formData.region || !formData.postalCode || !formData.country) {
+          setError('All shipping details are required.');
+          return;
+        }
+
+        if (!formData.email) {
+          setError('Email is required for authentication.');
+          return;
+        }
+
+        await handleSendOtp();
+        return;
+      }
+
+      // Verify OTP and proceed with checkout
       const cartCookie = Cookies.get('cart') || '[]';
       const cartItems = JSON.parse(cartCookie);
 
-      const response = await fetch('http://localhost:8383/api/auth/verify-otp', {
+      const authResponse = await fetch('http://localhost:8383/api/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email,
           otp: formData.otp,
-          cartItems,
         }),
       });
 
-      if (!response.ok) throw new Error('Failed to verify OTP');
+      if (!authResponse.ok) throw new Error('Failed to verify OTP');
 
-      const { token, user } = await response.json();
+      const { token, user } = await authResponse.json();
       localStorage.setItem('token', token);
-      Cookies.remove('cart');
 
-      const orderResponse = await fetch('http://localhost:8383/api/orders', {
+      // Create checkout session
+      const checkoutResponse = await fetch('http://localhost:8383/api/checkout/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          userId: user.id,
           cartItems,
-          shippingMethodId: 'shipping-method-id',
-          paymentMethodId: 'payment-method-id',
-          address: {
-            unitNumber: '',
-            streetNumber: '',
+          shippingAddress: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
             addressLine: formData.addressLine,
             city: formData.city,
             region: formData.region,
-            countryId: formData.country,
+            postalCode: formData.postalCode,
+            country: formData.country,
           },
+          paymentMethodId: 'card_zK5a7sd98wdwe78TbiSUyLUjann6xFx', // Replace with actual payment method ID
         }),
       });
 
-      if (!orderResponse.ok) throw new Error('Failed to process checkout');
-      router.push('/order-confirmation');
+      if (!checkoutResponse.ok) throw new Error('Failed to create checkout session');
+
+      const { checkoutUrl, orderId } = await checkoutResponse.json();
+
+      // Redirect to Thawani checkout page
+      window.location.href = checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during checkout');
+      setIsProcessing(false);
     }
   };
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">
-        {step === 'details' ? 'Shipping & Payment Details' : 'Verify OTP'}
+        {step === 'details' ? 'Shipping Details' : 'Verify OTP'}
       </h2>
       {error && <p className="text-red-600 mb-4">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -211,45 +205,6 @@ export default function CheckOutForm() {
                 className="border p-2 rounded"
               />
             </div>
-            <select
-              name="paymentMethod"
-              value={formData.paymentMethod}
-              onChange={handleChange}
-              className="border p-2 rounded w-full"
-            >
-              <option value="credit_card">Credit Card</option>
-              <option value="paypal">PayPal</option>
-            </select>
-            {formData.paymentMethod === 'credit_card' && (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  name="cardNumber"
-                  value={formData.cardNumber}
-                  onChange={handleChange}
-                  placeholder="Card Number"
-                  className="border p-2 rounded w-full"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleChange}
-                    placeholder="MM/YY"
-                    className="border p-2 rounded"
-                  />
-                  <input
-                    type="text"
-                    name="cvv"
-                    value={formData.cvv}
-                    onChange={handleChange}
-                    placeholder="CVV"
-                    className="border p-2 rounded"
-                  />
-                </div>
-              </div>
-            )}
           </>
         ) : (
           <input
@@ -263,9 +218,12 @@ export default function CheckOutForm() {
         )}
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          disabled={isProcessing}
+          className={`w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 ${
+            isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          {step === 'details' ? 'Continue to OTP' : 'Submit Order'}
+          {isProcessing ? 'Processing...' : step === 'details' ? 'Continue to OTP' : 'Complete Purchase'}
         </button>
       </form>
     </div>
