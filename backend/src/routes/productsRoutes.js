@@ -328,9 +328,10 @@ router.get('/by-slug/:slug', async (req, res) => {
     const formattedProducts = products.map((product) => {
       const firstProductItem = product.productItem[0] || {};
       const imageUrl = firstProductItem.images?.[0]?.imageUrl || product.coverImage || '';
-
+      console.log("formattedProducts",product.id)
       return {
         id: product.id,
+        productItemId: firstProductItem.id,
         name: product.name,
         price: firstProductItem.price ? parseFloat(firstProductItem.price) : 0,
         stock_quantity: firstProductItem.stockQuantity || 0,
@@ -339,7 +340,7 @@ router.get('/by-slug/:slug', async (req, res) => {
         brand: product.brand, // Include brand in response
       };
     });
-
+    
     // Return both products and category name
     res.status(200).json({
       products: formattedProducts,
