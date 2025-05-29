@@ -7,7 +7,8 @@ import { useState } from 'react';
 import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
 
 interface ProductCardProps {
-  id: string;
+  productId: string; // ID for Product model
+  productItemId: string; // ID for ProductItem model
   name: string;
   description?: string;
   price: number;
@@ -32,7 +33,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({
-  id,
+  productId,
+  productItemId,
   name,
   description,
   price,
@@ -60,7 +62,7 @@ export default function ProductCard({
   const [imageLoading, setImageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const productLink = customLink || `/product/${id}`;
+  const productLink = customLink || `/product/${productId}`;
   const isOutOfStock = stock_quantity === 0;
   const discountPercentage = discount || (originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
 
@@ -70,10 +72,11 @@ export default function ProductCard({
 
     if (isOutOfStock) return;
 
-    const product = { id, name, price, image, quantity: 1 };
+    const product = { productItemId, name, price, image, quantity: 1 };
     setError(null);
 
-    // Check if user is logged in by checking for JWT token
+    console.log('Adding to cart, productItemId:', productItemId); // Debug log
+
     const token = localStorage.getItem('token');
 
     if (token) {
@@ -86,7 +89,7 @@ export default function ProductCard({
             'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            productItemId: id, // Assuming 'id' is the productItemId
+            productItemId,
             quantity: 1,
           }),
         });
@@ -107,16 +110,40 @@ export default function ProductCard({
       if (onAddToCart) {
         onAddToCart(product);
       } else {
-        const cart = JSON.parse(Cookies.get('cart') || '[]');
-        const existingItem = cart.find((item: any) => item.id === id);
+        try {
+          const cart = JSON.parse(Cookies.get('cart') || '[]');
+          console.log('Current cart before adding:', cart);
+          
+          // Find if this exact product item already exists in cart
+          const existingItemIndex = cart.findIndex((item: any) => 
+            item.productItemId === productItemId
+          );
 
-        if (!existingItem) {
-          cart.push(product);
-        } else {
-          existingItem.quantity += 1;
+          if (existingItemIndex === -1) {
+            // Add new item to cart
+            cart.push({
+              productItemId,
+              name,
+              price,
+              image,
+              quantity: 1
+            });
+          } else {
+            // Update quantity of existing item
+            cart[existingItemIndex].quantity += 1;
+          }
+
+          // Save updated cart
+          Cookies.set('cart', JSON.stringify(cart), { expires: 7 });
+          console.log('Updated cart in cookies:', cart);
+          
+          // Verify the cookie was set correctly
+          const verifyCart = JSON.parse(Cookies.get('cart') || '[]');
+          console.log('Verified cart in cookies:', verifyCart);
+        } catch (error) {
+          console.error('Error updating cart:', error);
+          setError('Failed to update cart');
         }
-
-        Cookies.set('cart', JSON.stringify(cart), { expires: 7 });
       }
 
       setAdded(true);
@@ -129,7 +156,7 @@ export default function ProductCard({
     e.preventDefault();
     
     if (onWishlist) {
-      onWishlist(id);
+      onWishlist(productId);
     }
     setIsWishlisted(!isWishlisted);
   };
@@ -139,7 +166,7 @@ export default function ProductCard({
     e.preventDefault();
     
     if (onQuickView) {
-      onQuickView(id);
+      onQuickView(productId);
     }
   };
 
@@ -244,7 +271,6 @@ export default function ProductCard({
   return (
     <div className={`${getCardClasses()} ${className}`}>
       <Link href={productLink} className="block">
-        {/* Image Container */}
         <div className={`relative ${getImageHeight()} overflow-hidden bg-gray-50`}>
           <Image
             src={image}
@@ -257,7 +283,6 @@ export default function ProductCard({
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
           
-          {/* Overlay for out of stock */}
           {isOutOfStock && (
             <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
               <span className="text-gray-600 font-semibold text-lg">Out of Stock</span>
@@ -268,31 +293,25 @@ export default function ProductCard({
           {showQuickActions && renderQuickActions()}
         </div>
 
-        {/* Content */}
         <div className="p-4">
-          {/* Brand */}
           {brand && (
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
               {brand}
             </p>
           )}
 
-          {/* Title */}
           <h3 className="font-semibold text-gray-900 line-clamp-2 mb-2 group-hover:text-blue-600 transition-colors">
             {name}
           </h3>
 
-          {/* Description */}
           {description && variant !== 'compact' && (
             <p className="text-sm text-gray-600 line-clamp-2 mb-3">
               {description}
             </p>
           )}
 
-          {/* Rating */}
           {renderRating()}
 
-          {/* Price */}
           <div className="flex items-center gap-2 mb-4">
             <span className="text-lg font-bold text-gray-900">
               ${price.toFixed(2)}
@@ -304,7 +323,6 @@ export default function ProductCard({
             )}
           </div>
 
-          {/* Stock Info */}
           <div className="flex items-center justify-between mb-4">
             <span className={`text-xs font-medium px-2 py-1 rounded-full ${
               stock_quantity > 10 
@@ -319,14 +337,12 @@ export default function ProductCard({
         </div>
       </Link>
 
-      {/* Error Message */}
       {error && (
         <div className="px-4 pb-2">
           <p className="text-red-500 text-sm text-center">{error}</p>
         </div>
       )}
 
-      {/* Add to Cart Button */}
       <div className="px-4 pb-4">
         <button
           onClick={handleAddToCart}
