@@ -11,6 +11,8 @@ router.post('/add', verifyToken, async (req, res) => {
   try {
     const { productItemId, quantity } = req.body;
     const userId = req.user.userId;
+    console.log("productItemId:",productItemId)
+    console.log("quantity",quantity)
 
     // Validate input
     if (!productItemId || typeof quantity !== 'number' || quantity <= 0) {
@@ -111,64 +113,88 @@ router.post('/sync-guest-cart', verifyToken, async (req, res) => {
       const syncedItems = [];
 
       for (const item of cartItems) {
-        if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
-          console.warn(`Skipping invalid cart item: ${JSON.stringify(item)}`);
-          continue;
-        }
-
-        const productItem = await tx.productItem.findUnique({
-          where: { id: item.productItemId },
-          include: {
-            product: true
-          }
-        });
-
-        if (!productItem) {
-          console.warn(`ProductItem not found for ID: ${item.productItemId}`);
-          continue;
-        }
-
-        // Check stock availability
-        if (productItem.stockQuantity < item.quantity) {
-          console.warn(`Insufficient stock for product ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${item.quantity}`);
-          continue;
-        }
-
-        const existingItem = await tx.cartItem.findFirst({
-          where: {
-            userId,
-            productItemId: item.productItemId,
-          },
-        });
-
-        if (existingItem) {
-          // Update existing item with new quantity
-          const newQuantity = existingItem.quantity + item.quantity;
-          if (productItem.stockQuantity < newQuantity) {
-            console.warn(`Insufficient stock for updating cart item ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${newQuantity}`);
+        try {
+          if (!item.productItemId || typeof item.quantity !== 'number' || item.quantity <= 0) {
+            console.warn(`Skipping invalid cart item: ${JSON.stringify(item)}`);
             continue;
           }
-          
-          const updatedItem = await tx.cartItem.update({
-            where: { id: existingItem.id },
-            data: { 
-              quantity: newQuantity,
-              updatedAt: new Date()
-            },
+
+          // Get product item with its product details
+          const productItem = await tx.productItem.findUnique({
+            where: { id: item.productItemId },
+            include: {
+              product: true,
+              images: true
+            }
           });
-          syncedItems.push(updatedItem);
-        } else {
-          // Create new cart item
-          const newItem = await tx.cartItem.create({
-            data: {
+
+          if (!productItem) {
+            console.warn(`ProductItem not found for ID: ${item.productItemId}`);
+            continue;
+          }
+
+          // Check stock availability
+          if (productItem.stockQuantity < item.quantity) {
+            console.warn(`Insufficient stock for product ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${item.quantity}`);
+            continue;
+          }
+
+          // Check for existing cart item
+          const existingItem = await tx.cartItem.findFirst({
+            where: {
               userId,
               productItemId: item.productItemId,
-              quantity: item.quantity,
-              createdAt: new Date(),
-              updatedAt: new Date()
             },
           });
-          syncedItems.push(newItem);
+
+          if (existingItem) {
+            // Update existing item with new quantity
+            const newQuantity = existingItem.quantity + item.quantity;
+            if (productItem.stockQuantity < newQuantity) {
+              console.warn(`Insufficient stock for updating cart item ${item.productItemId}. Available: ${productItem.stockQuantity}, Requested: ${newQuantity}`);
+              continue;
+            }
+            
+            const updatedItem = await tx.cartItem.update({
+              where: { id: existingItem.id },
+              data: { 
+                quantity: newQuantity,
+                updatedAt: new Date()
+              },
+              include: {
+                productItem: {
+                  include: {
+                    product: true,
+                    images: true
+                  }
+                }
+              }
+            });
+            syncedItems.push(updatedItem);
+          } else {
+            // Create new cart item
+            const newItem = await tx.cartItem.create({
+              data: {
+                userId,
+                productItemId: item.productItemId,
+                quantity: item.quantity,
+                createdAt: new Date()
+              },
+              include: {
+                productItem: {
+                  include: {
+                    product: true,
+                    images: true
+                  }
+                }
+              }
+            });
+            syncedItems.push(newItem);
+          }
+        } catch (itemError) {
+          console.error(`Error processing cart item ${item.productItemId}:`, itemError);
+          // Continue with next item instead of failing the entire sync
+          continue;
         }
       }
 
