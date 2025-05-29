@@ -5,6 +5,7 @@ import authRoutes from './routes/authRoutes.js';
 import productsRoutes from './routes/productsRoutes.js'
 import categoriesRoutes from './routes/categoriesRoutes.js'
 import cartRoutes from './routes/cartRoutes.js'
+import checkoutRoutes from './routes/checkoutRoutes.js'
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/product', productsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/checkout', checkoutRoutes);
 
 // Start server
 app.listen(8383, () => {
