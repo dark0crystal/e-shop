@@ -61,12 +61,15 @@ export default function ProductCard({
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  console.log("productItemId",productItemId)
+  console.log("productId",productId)
 
   const productLink = customLink || `/product/${productId}`;
   const isOutOfStock = stock_quantity === 0;
   const discountPercentage = discount || (originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
+    console.log('Adding to cart, productItemId:', productItemId); // Debug log
     e.stopPropagation();
     e.preventDefault();
 
@@ -120,9 +123,9 @@ export default function ProductCard({
           );
 
           if (existingItemIndex === -1) {
-            // Add new item to cart
+            // Add new item to cart with productItemId
             cart.push({
-              productItemId,
+              productItemId: productItemId,
               name,
               price,
               image,
