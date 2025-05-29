@@ -5,6 +5,7 @@ import ProductCard from './ProductCard';
 
 interface Product {
   id: string;
+  productItemId: string;
   name: string;
   price: number;
   stock_quantity: number;
@@ -18,6 +19,7 @@ export default function ProductList({ slug = 'all-products' }: { slug?: string }
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  console.log("products",products)
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -34,6 +36,7 @@ export default function ProductList({ slug = 'all-products' }: { slug?: string }
         }
 
         const data = await response.json();
+        console.log("data",data)
         setProducts(data.products);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred while fetching products');
@@ -63,13 +66,20 @@ export default function ProductList({ slug = 'all-products' }: { slug?: string }
         {products.map((product) => (
           <ProductCard
             key={product.id}
-            id={product.id}
+            productId={product.id}
+            productItemId={product.id}
             name={product.name}
-            description={product.description || ''}
+            description={product.description}
             price={product.price}
             image={product.image_url}
-            brand={product.brand || ''}
+            brand={product.brand}
             stock_quantity={product.stock_quantity}
+            isNew={false}
+            isSale={false}
+            variant="default"
+            showQuickActions={true}
+            showWishlist={true}
+            showQuickView={true}
           />
         ))}
       </div>
