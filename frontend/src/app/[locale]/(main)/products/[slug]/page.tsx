@@ -2,6 +2,7 @@ import ProductCard from '../../../../components/product/ProductCard';
 
 interface Product {
   id: string;
+  productItemId: string;
   name: string;
   price: number;
   stock_quantity: number;
@@ -109,7 +110,8 @@ export default async function Page({
         {products.map((product) => (
           <ProductCard
             key={product.id}
-            id={product.id}
+            productId={product.id}
+            productItemId={product.productItemId}
             name={product.name}
             description={product.name}
             price={product.price}
