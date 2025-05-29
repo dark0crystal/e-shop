@@ -47,8 +47,8 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         totalPrice,
         status: 'pending',
         userPaymentMethodId: paymentMethodId,
-        shippingMethodId: 'default-shipping-method', // Replace with actual shipping method
-        orderStatusId: 'pending', // Replace with actual status ID
+        shippingMethodId: 'default-shipping-method',
+        orderStatusId: 'pending', // Using the ID from our migration
         items: {
           create: cartItems.map(item => ({
             productId: item.productId,
