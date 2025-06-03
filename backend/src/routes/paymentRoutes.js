@@ -6,13 +6,19 @@ const router = express.Router();
 
 // Create a new payment method
 router.post('/payment-methods', verifyToken, async (req, res) => {
+  console.log("req.body", req.body);
   try {
     const { paymentTypeId, provider, accountNumber, expiryDate } = req.body;
+    console.log("paymentTypeId", paymentTypeId);
+    console.log("provider", provider);
+    console.log("accountNumber", accountNumber);
+    console.log("expiryDate", expiryDate);  
+    console.log("userId", req.user.userId);
     const userId = req.user.userId;
 
     // First, ensure the payment type exists
     const paymentType = await prisma.paymentType.findUnique({
-      where: { id: paymentTypeId },
+      where: { id: "fadsfsadfr43r4325adfasf" },
     });
 
     if (!paymentType) {
@@ -23,14 +29,14 @@ router.post('/payment-methods', verifyToken, async (req, res) => {
     const paymentMethod = await prisma.userPaymentMethod.create({
       data: {
         userId,
-        paymentTypeId,
+        paymentTypeId:"fadsfsadfr43r4325adfasf",
         provider,
         accountNumber,
         expiryDate: new Date(expiryDate),
         isDefault: true, // Set as default payment method
       },
     });
-
+    console.log("paymentMethod", paymentMethod);
     res.status(201).json(paymentMethod);
   } catch (error) {
     console.error('Error creating payment method:', error);
