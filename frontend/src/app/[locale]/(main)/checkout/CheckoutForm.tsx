@@ -97,8 +97,9 @@ export default function CheckOutForm() {
       const data = await checkoutResponse.json();
       const session_id = data.session_id;
       console.log("session_id", session_id);
-      const checkoutUrl = `https://uatcheckout.thawani.om/pay/${session_id}?key=${process.env.THAWANI_PUBLISHABLE_KEY}`
-
+  
+      const checkoutUrl = `https://uatcheckout.thawani.om/pay/${session_id}?key=${process.env.NEXT_PUBLIC_THAWANI_PUBLISHABLE_KEY}`
+      
       console.log("checkoutUrl", checkoutUrl);
       if (!checkoutResponse.ok) throw new Error('Failed to create checkout session');
 
