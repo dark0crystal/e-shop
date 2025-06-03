@@ -5,7 +5,7 @@ import fetch from 'node-fetch';
 
 const router = express.Router();
 const THAWANI_API_KEY = process.env.THAWANI_API_KEY;
-const THAWANI_BASE_URL = 'https://uatcheckout.thawani.om/api/v1';
+const THAWANI_BASE_URL = 'https://uatcheckout.thawani.om/api/v1/checkout/session';
 
 // Calculate total price securely on the server
 async function calculateTotalPrice(cartItems) {
@@ -47,8 +47,8 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         totalPrice,
         status: 'pending',
         userPaymentMethodId: paymentMethodId,
-        shippingMethodId: 'default-shipping-method',
-        orderStatusId: 'pending', // Using the ID from our migration
+        shippingMethodId: 'adsfadsf423tgasdfgasdfg',
+        orderStatusId: 'fdsafkfbkhj3klj23kj32kj', // Using the ID from our migration
         items: {
           create: cartItems.map(item => ({
             productId: item.productId,
@@ -61,9 +61,9 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         items: true,
       },
     });
-
+    console.log("paymentMethodId", paymentMethodId);
     // Create Thawani payment intent
-    const paymentIntentResponse = await fetch(`${THAWANI_BASE_URL}/payment_intents`, {
+    const paymentIntentResponse = await fetch(`${THAWANI_BASE_URL}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -71,13 +71,20 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         'thawani-api-key': THAWANI_API_KEY
       },
       body: JSON.stringify({
-        payment_method_id: paymentMethodId,
-        amount: Math.round(totalPrice * 1000), // Convert to smallest currency unit (baisa)
-        client_reference_id: order.id,
-        return_url: `${process.env.FRONTEND_URL}/order-confirmation?orderId=${order.id}`,
-        metadata: {
-          orderId: order.id,
-          userId: userId
+        "client_reference_id": order.userId,
+        "mode": "payment",
+        "products": [
+          {
+            "name": "product 1",
+            "quantity": 1,
+            "unit_amount": 100
+          }
+        ],
+        "success_url": "https://thw.om/success",
+        "cancel_url": "https://thw.om/cancel",
+        "metadata": {
+          "Customer name": "somename",
+          "order id": 0
         }
       })
     });
@@ -87,7 +94,7 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
     }
 
     const paymentIntent = await paymentIntentResponse.json();
-
+    console.log("paymentIntent", paymentIntent);
     // Update stock quantities
     for (const item of cartItems) {
       await prisma.productItem.update({
