@@ -51,7 +51,28 @@ export default function CheckOutForm() {
       const cartCookie = Cookies.get('cart') || '[]';
       const cartItems = JSON.parse(cartCookie);
 
-      // Create checkout session
+      // First create a payment method
+      const paymentMethodResponse = await fetch('http://localhost:8383/api/payment-methods', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          paymentTypeId: 'card', // This should match an existing payment type in your database
+          provider: 'Thawani',
+          accountNumber: 1234567890, // This should be a real account number in production
+          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        }),
+      });
+
+      if (!paymentMethodResponse.ok) {
+        throw new Error('Failed to create payment method');
+      }
+
+      const { id: paymentMethodId } = await paymentMethodResponse.json();
+
+      // Create checkout session with the new payment method ID
       const checkoutResponse = await fetch('http://localhost:8383/api/checkout/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -70,7 +91,7 @@ export default function CheckOutForm() {
             country: formData.country,
             mobileNumber: formData.mobileNumber,
           },
-          paymentMethodId: 'card_zK5a7sd98wdwe78TbiSUyLUjann6xFx', // Replace with actual payment method ID
+          paymentMethodId,
         }),
       });
 
