@@ -52,7 +52,7 @@ export default function CheckOutForm() {
       const cartItems = JSON.parse(cartCookie);
 
       // First create a payment method
-      const paymentMethodResponse = await fetch('http://localhost:8383/api/payment-methods', {
+      const paymentMethodResponse = await fetch('http://localhost:8383/api/payment/payment-methods', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
