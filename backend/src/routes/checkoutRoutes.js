@@ -108,12 +108,13 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
     }
 
     // Clear user's cart
-    await prisma.cartItem.deleteMany({
-      where: { userId },
-    });
-
+    // await prisma.cartItem.deleteMany({
+    //   where: { userId },
+    // });
+    console.log("paymentIntent", paymentIntent.data.session_id);
     res.status(200).json({
       success: true,
+      session_id: paymentIntent.data.session_id,
       orderId: order.id,
       paymentIntentId: paymentIntent.id,
       checkoutUrl: paymentIntent.checkout_url
