@@ -25,7 +25,7 @@ app.use('/api/product', productsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
-app.use('/api', paymentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Start server
 app.listen(8383, () => {
