@@ -7,7 +7,7 @@ import categoriesRoutes from './routes/categoriesRoutes.js'
 import cartRoutes from './routes/cartRoutes.js'
 import checkoutRoutes from './routes/checkoutRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
-
+import adsRoutes from './routes/adsRoutes.js'
 const app = express();
 
 // Enable CORS middleware
@@ -26,6 +26,7 @@ app.use('/api/categories', categoriesRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/ads', adsRoutes);
 
 // Start server
 app.listen(8383, () => {
