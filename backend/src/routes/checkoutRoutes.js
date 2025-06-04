@@ -50,11 +50,17 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         shippingMethodId: 'adsfadsf423tgasdfgasdfg',
         orderStatusId: 'fdsafkfbkhj3klj23kj32kj', // Using the ID from our migration
         items: {
-          create: cartItems.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.price,
-          })),
+          create: await Promise.all(cartItems.map(async item => {
+            const productItem = await prisma.productItem.findUnique({
+              where: { id: item.productItemId },
+              include: { product: true }
+            });
+            return {
+              productId: productItem.product.id,
+              quantity: item.quantity,
+              price: Number(productItem.price)
+            };
+          }))
         },
       },
       include: {
@@ -77,7 +83,7 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
           {
             "name": "product 1",
             "quantity": order.items.quantity || 1,
-            "unit_amount":totalPrice * 100 || 100
+            "unit_amount":totalPrice * 1000 || 100
           }
         ],
         "success_url": "https://thw.om/success",
