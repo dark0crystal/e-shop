@@ -36,10 +36,10 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
   try {
     const { cartItems, shippingAddress, paymentMethodId } = req.body;
     const userId = req.user.userId;
-
+    console.log("cartItems", cartItems);
     // Calculate total price securely
     const totalPrice = await calculateTotalPrice(cartItems);
-
+    console.log("totalPrice", totalPrice);
     // Create order in database first
     const order = await prisma.order.create({
       data: {
@@ -76,8 +76,8 @@ router.post('/create-checkout-session', verifyToken, async (req, res) => {
         "products": [
           {
             "name": "product 1",
-            "quantity": 1,
-            "unit_amount": 100
+            "quantity": order.items.quantity || 1,
+            "unit_amount":totalPrice * 100 || 100
           }
         ],
         "success_url": "https://thw.om/success",
