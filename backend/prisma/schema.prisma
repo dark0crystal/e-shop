@@ -316,3 +316,9 @@ model OtpRequest {
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+model ad {
+  id        String   @id @default(uuid())
+  type      String
+  image_url String
+}
