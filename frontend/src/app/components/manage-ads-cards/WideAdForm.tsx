@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UploadCloud } from "lucide-react";
 import WideAd from "./WideAd";
+import { supabase } from "@/lib/supabase";
 
 const imageSchema = z.object({
   image: z
@@ -29,10 +30,22 @@ export default function WideAdForm() {
     resolver: zodResolver(imageSchema),
   });
 
-  const onSubmit = (data: ImageFormData) => {
+  const onSubmit = async (data: ImageFormData) => {
     const imageFile = data.image[0];
     console.log("Uploading image:", imageFile);
-    // Handle image upload (e.g., to Supabase)
+    // upload to supabase
+    const { data: uploadData, error } = await supabase.storage.from('ads').upload(`${imageFile.name}`, imageFile);
+    if (error) {
+      console.error("Error uploading image:", error);
+      return;
+    }
+
+    const response = await fetch("http://localhost:8383/ads/create-ad", {
+      method: "POST",
+      body: JSON.stringify({ image_url: imageFile , type: "wide"}),
+    });
+    const responseData = await response.json();
+    console.log("data", responseData);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
