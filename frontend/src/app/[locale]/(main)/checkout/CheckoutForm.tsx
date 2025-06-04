@@ -48,8 +48,33 @@ export default function CheckOutForm() {
       }
 
       const token = localStorage.getItem('token');
-      const cartCookie = Cookies.get('cart') || '[]';
-      const cartItems = JSON.parse(cartCookie);
+      let cartItems;
+
+      if (token) {
+        // Logged-in user: Fetch cart from database
+        const cartResponse = await fetch('http://localhost:8383/api/cart/', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!cartResponse.ok) {
+          throw new Error('Failed to fetch cart from database');
+        }
+
+        cartItems = await cartResponse.json();
+      } else {
+        // Guest user: Get cart from cookies
+        const cartCookie = Cookies.get('cart') || '[]';
+        cartItems = JSON.parse(cartCookie);
+      }
+
+      if (!cartItems || cartItems.length === 0) {
+        setError('Your cart is empty');
+        setIsProcessing(false);
+        return;
+      }
 
       // First create a payment method
       const paymentMethodResponse = await fetch('http://localhost:8383/api/payment/payment-methods', {
