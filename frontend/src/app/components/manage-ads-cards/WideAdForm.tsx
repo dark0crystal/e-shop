@@ -81,7 +81,7 @@ export default function WideAdForm() {
     }
 
     try {
-      const response = await fetch("http://localhost:8383/ads/create-ad", {
+      const response = await fetch("http://localhost:8383/api/ads/create-ad", {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
