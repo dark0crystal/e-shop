@@ -26,7 +26,7 @@ router.get('/get-ads/wide', async (req, res) => {
 });
 
 //---------------------------------
-// create ad
+// create wide ad
 
 router.post('/create-ad', async (req, res) => {
     try {

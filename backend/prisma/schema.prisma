@@ -318,7 +318,10 @@ model OtpRequest {
 }
 
 model ad {
+  title String?
   id        String   @id @default(uuid())
   type      String
   image_url String
+  url       String?
+
 }
